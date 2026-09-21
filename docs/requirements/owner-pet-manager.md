@@ -4,7 +4,7 @@
 
 This document defines the requirements for the **Owner & Pet Manager** service of the My Pet Care platform. It captures what the service must do so developers and agents can implement and verify behavior consistently.
 
-This version covers **functional requirements** only. Non-functional requirements and additional requirement details will be added later.
+This version covers **functional requirements** and an initial set of **non-functional requirements**. Further NFRs and additional requirement details may be added later.
 
 ## Scope
 
@@ -13,7 +13,9 @@ This version covers **functional requirements** only. Non-functional requirement
 - Owner lifecycle: create, read, update, and deactivate
 - Pet lifecycle: create, read, update, and deactivate
 - Owner↔Pet management: linking a Pet to exactly one Owner, listing an Owner’s Pets, and checking whether an Owner manages a Pet
+- **Pet list visibility**: Owner-controlled public/private setting for their Pet list
 - Serving other platform services that need Owner/Pet identity and ownership information
+- Initial NFRs for latency, Owner data isolation, and credential/data protection in transit
 
 ### Out of scope
 
@@ -22,7 +24,9 @@ This version covers **functional requirements** only. Non-functional requirement
 - Ownership transfer between Owners
 - Reactivation of deactivated Owners or Pets
 - Photo upload/storage pipelines (photos are optional opaque references)
-- Password policy and credential hashing details (deferred to non-functional requirements)
+- Offline / client-side operation without network (client concern, not this backend service)
+- Password complexity policy and encryption at rest (deferred)
+- Making Pet **details** public (only the Pet **list** may be made public)
 
 ### Domain constraints
 
@@ -30,6 +34,8 @@ This version covers **functional requirements** only. Non-functional requirement
 - Creating a Pet assigns the creating Owner as that Pet’s Owner
 - Deactivation is soft (records are retained and marked inactive)
 - Deactivating an Owner first deactivates that Owner’s active Pets, then deactivates the Owner
+- **Pet list visibility** defaults to **private**; the Owner may set it to **public**
+- Public Pet list does **not** expose Pet details to other Owners
 
 ## Key actors
 
@@ -52,6 +58,7 @@ This version covers **functional requirements** only. Non-functional requirement
 4. Create fails if **email** is already used by another Owner.
 5. Create fails if any required field (username, email, password) is missing.
 6. On success, the Owner is active and can be retrieved by id or username.
+7. On success, **Pet list visibility** is **private** (see OPM-FR-011).
 
 ### OPM-FR-002 — Get Owner
 
@@ -63,6 +70,8 @@ This version covers **functional requirements** only. Non-functional requirement
 2. An Owner can be retrieved by **username**.
 3. Retrieval of a non-existent id or username fails in a way the caller can distinguish from success.
 4. A deactivated Owner can still be retrieved (callers can observe deactivated status).
+5. Responses never include the Owner’s **password** (see OPM-NFR-004).
+6. An Owner retrieving another Owner does not receive that Owner’s **email** (see OPM-NFR-003).
 
 ### OPM-FR-003 — Update Owner
 
@@ -105,14 +114,16 @@ This version covers **functional requirements** only. Non-functional requirement
 
 ### OPM-FR-006 — Get Pet
 
-**Description:** The service returns a Pet by id for Owners and other platform services.
+**Description:** The service returns a Pet by id for the Pet’s Owner and for other platform services. Other Owners do not receive Pet details.
 
 **Acceptance criteria:**
 
-1. A Pet can be retrieved by **id**.
-2. Retrieval of a non-existent id fails in a way the caller can distinguish from success.
-3. A deactivated Pet can still be retrieved (callers can observe deactivated status).
-4. The response identifies the Pet’s Owner.
+1. The Pet’s Owner can retrieve the Pet by **id**, including Pet details.
+2. Other platform services can retrieve the Pet by **id**, including Pet details needed for platform operations.
+3. An Owner who is not the Pet’s Owner cannot retrieve that Pet’s details.
+4. Retrieval of a non-existent id fails in a way the caller can distinguish from success.
+5. A deactivated Pet can still be retrieved by its Owner or by other platform services (callers can observe deactivated status).
+6. The response identifies the Pet’s Owner.
 
 ### OPM-FR-007 — Update Pet
 
@@ -141,15 +152,17 @@ This version covers **functional requirements** only. Non-functional requirement
 
 ### OPM-FR-009 — List Pets for Owner
 
-**Description:** The service lists Pets managed by a given Owner for that Owner and for other platform services.
+**Description:** The service lists Pets managed by a given Owner, subject to Pet list visibility for Owner callers, and without restriction for other platform services.
 
 **Acceptance criteria:**
 
-1. Callers can list Pets for an Owner by Owner **id**.
-2. The list includes active Pets for that Owner.
-3. The list may include deactivated Pets, or expose a filter for active-only vs all; if no filter is provided, behavior must be documented and consistent.
-4. Listing for a non-existent Owner fails in a way the caller can distinguish from an empty list for a valid Owner with no Pets.
-5. An Owner with no Pets receives an empty list (not an error).
+1. An Owner can always list their **own** Pets by Owner **id**.
+2. Other platform services can list Pets for an Owner by Owner **id**.
+3. Another Owner can list an Owner’s Pets only when that Owner’s **Pet list visibility** is **public**; if **private**, the request is denied (or returns no Pet list) in a way distinguishable from “Owner has no Pets.”
+4. When the list is returned, it includes active Pets for that Owner.
+5. The list may include deactivated Pets, or expose a filter for active-only vs all; if no filter is provided, behavior must be documented and consistent.
+6. Listing for a non-existent Owner fails in a way the caller can distinguish from an empty list for a valid Owner with no Pets.
+7. An Owner with no Pets receives an empty list (not an error) when the caller is allowed to list.
 
 ### OPM-FR-010 — Check Pet ownership
 
@@ -161,3 +174,60 @@ This version covers **functional requirements** only. Non-functional requirement
 2. The check returns negative (not owner) when the Pet exists but belongs to a different Owner.
 3. The check fails or returns a distinguishable “not found” outcome when the Owner or Pet does not exist.
 4. The check remains answerable for deactivated Owners and/or deactivated Pets (ownership relationship is still queryable).
+
+### OPM-FR-011 — Set Pet list visibility
+
+**Description:** An Owner sets whether other Owners may see their Pet list. Visibility defaults to private and does not expose Pet details.
+
+**Acceptance criteria:**
+
+1. A newly created Owner has **Pet list visibility** set to **private**.
+2. An active Owner can set their Pet list visibility to **public** or **private**.
+3. Setting visibility on a non-existent or deactivated Owner fails.
+4. Changing visibility does not by itself expose Pet **details** to other Owners (see OPM-FR-006, OPM-NFR-003).
+5. After setting visibility to **public**, other Owners can list that Owner’s Pets per OPM-FR-009.
+6. After setting visibility to **private**, other Owners can no longer list that Owner’s Pets per OPM-FR-009.
+
+## Non-functional requirements
+
+### OPM-NFR-001 — Read/check latency
+
+**Description:** Read and ownership-check operations respond quickly under normal load.
+
+**Acceptance criteria:**
+
+1. Under **normal load**, p95 response time is **&lt; 500ms** for: get Owner, get Pet, list Pets for Owner, and check Pet ownership.
+2. The metric refers to the service’s handling time under normal load (exact harness defined in the test plan).
+
+### OPM-NFR-002 — Write latency
+
+**Description:** Write and deactivate operations complete within a bound under normal load.
+
+**Acceptance criteria:**
+
+1. Under **normal load**, p95 response time is **&lt; 2s** for: create/update/deactivate Owner, create/update/deactivate Pet, and set Pet list visibility.
+2. The metric refers to the service’s handling time under normal load (exact harness defined in the test plan).
+
+### OPM-NFR-003 — Owner data isolation
+
+**Description:** Owners cannot access other Owners’ private data or modify other Owners’ or Pets’ information. Trusted other platform services retain their FR capabilities.
+
+**Acceptance criteria:**
+
+1. An Owner cannot read another Owner’s **email**.
+2. An Owner cannot read another Owner’s **Pet list** when that Owner’s Pet list visibility is **private**.
+3. When Pet list visibility is **public**, another Owner may read the **list** only (not Pet details).
+4. An Owner cannot read **Pet details** for a Pet they do not own.
+5. An Owner cannot modify another Owner’s profile or a Pet they do not own (consistent with OPM-FR-003, OPM-FR-007, OPM-FR-008, OPM-FR-011).
+6. These isolation rules constrain **Owner** actors; **other platform services** may perform the lookups and ownership checks defined in the FRs.
+
+### OPM-NFR-004 — Credential and data protection
+
+**Description:** Credentials and sensitive data are protected in API responses and in transit. Passwords are not stored in plaintext.
+
+**Acceptance criteria:**
+
+1. Owner **passwords** are never included in API responses.
+2. Owner passwords are not stored in plaintext.
+3. Client–service communication that carries credentials or private Owner/Pet data uses **TLS** (confidentiality in transit).
+4. Encryption at rest and password complexity policy are out of scope for this NFR version.

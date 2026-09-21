@@ -12,6 +12,10 @@ _Avoid_: Animal, companion
 The person who manages one or more pets and participates in communities.
 _Avoid_: User, caregiver, account holder
 
+**Pet list visibility**:
+An Owner-level setting that controls whether other Owners may see that Owner’s list of Pets. Defaults to private; the Owner may set it to public. Does not expose Pet details.
+_Avoid_: Profile visibility, pet privacy
+
 **Health metric**:
 A measurable dimension of a pet's health tracked over time. The three initial health metrics are calories consumed, weight, and exercise amount.
 _Avoid_: Health data point, vital
