@@ -5,7 +5,7 @@ My Pet Care is a platform for tracking pet health and connecting pet owners thro
 ## Language
 
 **Pet**:
-The animal whose health is tracked and whose exercise is managed on the platform.
+The animal whose health is tracked and whose exercise is managed on the platform. Each Pet is managed by exactly one Owner.
 _Avoid_: Animal, companion
 
 **Owner**:
