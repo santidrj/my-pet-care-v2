@@ -23,7 +23,7 @@ This version covers **functional requirements** and an initial set of **non-func
 ### Out of scope
 
 - Pet and Owner identity lifecycle (owned by Owner & Pet Manager)
-- **Exercise** types and **Activity** logs (separate service later)
+- **Activity type** catalog and **Activity** logs (separate service later)
 - Dose-by-dose medication administration logging
 - Species-based default wash intervals
 - Vet visit attachments or clinical coding systems

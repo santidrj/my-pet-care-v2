@@ -19,7 +19,7 @@ This version covers **functional requirements** and an initial set of **non-func
 
 ### Out of scope
 
-- Health metrics, exercise types, activity logs, and social features (communities, forums, shared locations, group activities)
+- Health metrics, Activity types, Activity logs, and social features (communities, forums, shared locations, group activities)
 - Authentication protocols and login flows (this service stores Owner credential fields; how clients authenticate is defined elsewhere)
 - Ownership transfer between Owners
 - Reactivation of deactivated Owners or Pets
@@ -42,7 +42,7 @@ This version covers **functional requirements** and an initial set of **non-func
 | Actor | Description |
 | ----- | ----------- |
 | **Owner** | A person who manages one or more Pets. Creates and maintains their own profile and their Pets. |
-| **Other platform services** | Backend services (e.g. health or exercise) that look up Owners/Pets and verify ownership before acting on a Pet. |
+| **Other platform services** | Backend services (e.g. health or activity) that look up Owners/Pets and verify ownership before acting on a Pet. |
 
 ## Functional requirements
 
