@@ -1,0 +1,5 @@
+interface:
+  display_name: "Software Architect"
+  short_description: "Three architectures, decision left open"
+policy:
+  allow_implicit_invocation: false
