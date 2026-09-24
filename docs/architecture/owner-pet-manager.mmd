@@ -1,0 +1,31 @@
+C4Component
+    title Component diagram for Owner & Pet Manager
+
+    Person(owner, "Owner", "Trusted Owner identity")
+    Person(otherOwner, "Another Owner", "Public Pet summaries only")
+    System_Ext(phs, "Pet Health Service", "Pet identity and status")
+    System_Ext(am, "Activity Manager", "Pet identity and status")
+    System_Ext(community, "Community collaborator", "Community-owner check")
+
+    Container_Boundary(opm, "Owner & Pet Manager") {
+        Component(ownerC, "Owner", "Owner-facing", "Identity, Pet list visibility, Deactivation")
+        Component(petC, "Pet", "Owner-facing", "Pet identity, one Owner per Pet")
+        Component(summary, "Pet summary", "Owner-facing", "Public list and Get Pet Summary")
+        Component(lookup, "Identity lookup", "Service-facing", "Get, list, and ownership check")
+        ComponentDb(store, "Owner and Pet store", "System of record", "Owners, Pets, Deactivation, visibility")
+
+        Rel(ownerC, petC, "Deactivates active Pets first")
+        Rel(ownerC, store, "Reads and writes")
+        Rel(petC, store, "Reads and writes")
+        Rel(summary, store, "Reads")
+        Rel(lookup, store, "Reads")
+    }
+
+    Rel(owner, ownerC, "Maintains identity and visibility")
+    Rel(owner, petC, "Maintains Pets")
+    Rel(otherOwner, summary, "Reads public Pet summaries")
+    Rel(phs, lookup, "Ownership, species, status")
+    Rel(am, lookup, "Ownership and status")
+    Rel(ownerC, community, "Community-owner check", "synchronous")
+
+    UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

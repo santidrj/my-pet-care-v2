@@ -1,0 +1,35 @@
+flowchart TB
+  clients["Clients"]
+  linkHolder["External link holder"]
+
+  subgraph opm ["Owner & Pet Manager"]
+    opmSvc["Owner, Pet, Deactivation, Pet list visibility"]
+    opmDb[("Owner and Pet store")]
+    opmSvc --> opmDb
+  end
+
+  subgraph phs ["Pet Health Service"]
+    phsSvc["Health profile, Health metrics, Meals, Washes, Medical record"]
+    phsDb[("Health store")]
+    phsSvc --> phsDb
+  end
+
+  subgraph am ["Activity Manager"]
+    amSvc["Activity types, Activities, Shares"]
+    amDb[("Activity store")]
+    amSvc --> amDb
+  end
+
+  community["Community collaborator"]
+
+  clients -->|"trusted Owner identity"| opmSvc
+  clients -->|"trusted Owner identity"| phsSvc
+  clients -->|"trusted Owner identity"| amSvc
+  linkHolder -->|"external Share link"| amSvc
+
+  phsSvc -->|"ownership, species, active status"| opmSvc
+  amSvc -->|"ownership and active status"| opmSvc
+  amSvc -->|"latest weight"| phsSvc
+  amSvc -->|"activity-duration Health metric"| phsSvc
+  opmSvc -->|"Community-owner check"| community
+  amSvc -->|"Forum or Group activity Share"| community

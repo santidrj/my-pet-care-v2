@@ -1,0 +1,33 @@
+flowchart TB
+  owner["Owner"]
+  opm["Owner & Pet Manager"]
+  am["Activity Manager"]
+
+  subgraph phs ["Pet Health Service"]
+    profile["Health profile"]
+    meals["Meals"]
+    washes["Washes"]
+    medical["Medical record"]
+    metrics["Health metrics"]
+    store[("Health store")]
+
+    profile --> metrics
+    meals --> metrics
+    profile --> store
+    meals --> store
+    washes --> store
+    medical --> store
+    metrics --> store
+  end
+
+  owner --> profile
+  owner --> meals
+  owner --> washes
+  owner --> medical
+  owner --> metrics
+  profile -->|"ownership, species, status"| opm
+  meals -->|"ownership and status"| opm
+  washes -->|"ownership and status"| opm
+  medical -->|"ownership and status"| opm
+  metrics -->|"ownership and status"| opm
+  am -->|"activity-duration sync"| metrics

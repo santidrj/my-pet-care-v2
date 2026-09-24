@@ -1,0 +1,158 @@
+classDiagram
+    direction TB
+
+    namespace OwnerPetManager {
+        class Owner {
+            +id
+            +username
+            +email
+            +passwordHash
+            +photoRef
+            +petListVisibility
+            +deactivated
+        }
+        class Pet {
+            +id
+            +name
+            +species
+            +breed
+            +dateOfBirth
+            +sex
+            +photoRef
+            +deactivated
+        }
+        class PetSummary {
+            +id
+            +name
+            +species
+            +breed
+            +dateOfBirth
+            +sex
+            +photoRef
+        }
+    }
+
+    namespace PetHealthService {
+        class HealthProfile {
+            +petId
+            +latestWeight
+            +recommendedDailyKilocalories
+            +kilocaloriesOverride
+        }
+        class HealthMetric {
+            +id
+            +petId
+            +dimension
+            +value
+            +timestamp
+        }
+        class Meal {
+            +id
+            +petId
+            +foodName
+            +kilocalories
+            +timestamp
+            +brand
+            +labels
+            +notes
+        }
+        class Wash {
+            +id
+            +petId
+            +timestamp
+            +notes
+        }
+        class WashSchedule {
+            +petId
+            +startDate
+            +intervalDays
+        }
+        class VetVisit {
+            +id
+            +petId
+            +date
+            +time
+            +clinicName
+            +reasonOrSummary
+        }
+        class Medication {
+            +id
+            +petId
+            +drugName
+            +dosageInstructions
+            +start
+            +end
+        }
+        class MedicalRecord {
+            <<view>>
+        }
+    }
+
+    namespace ActivityManager {
+        class ActivityType {
+            +id
+            +label
+            +gpsCapable
+            +calorieFactor
+            +scope
+            +softRetired
+        }
+        class Activity {
+            +id
+            +petId
+            +timestamp
+            +durationMinutes
+            +activityAmount
+            +caloriesBurned
+            +caloriesOverride
+            +notes
+            +mediaRefs
+        }
+        class GpsActivity {
+            +route
+        }
+        class Share {
+            +id
+            +audienceKind
+            +audienceId
+            +externalLinkToken
+            +revoked
+        }
+        class ShareSnapshot {
+            <<view>>
+            +petDisplayName
+            +activityTypeLabel
+            +timestamp
+            +duration
+            +caloriesBurned
+            +activityAmount
+            +notes
+            +mediaRefs
+            +route
+        }
+    }
+
+    Owner "1" --> "*" Pet : manages
+    Pet ..> PetSummary : public summary
+    Pet ..> HealthProfile : petId
+    HealthProfile "1" --> "*" HealthMetric : history
+    Meal "1" --> "1" HealthMetric : calories-consumed
+    Pet ..> Meal : petId
+    Pet ..> Wash : petId
+    Pet ..> WashSchedule : petId
+    WashSchedule ..> Wash : next due
+    Pet ..> VetVisit : petId
+    Pet ..> Medication : petId
+    MedicalRecord o-- VetVisit
+    MedicalRecord o-- Medication
+    Medication "0..1" --> "0..1" VetVisit : optional link
+    Owner "0..1" --> "*" ActivityType : custom
+    Pet ..> Activity : petId
+    Activity "*" --> "1" ActivityType
+    Activity <|-- GpsActivity
+    Activity "1" --> "1" HealthMetric : activity-duration
+    Activity "1" --> "*" Share
+    Share ..> ShareSnapshot : resolve
+
+    note for MedicalRecord "Vet visits and Medications together"
+    note for Share "Audience: Owner, Forum, Group activity, or external link"

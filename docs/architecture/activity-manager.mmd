@@ -1,0 +1,27 @@
+C4Component
+    title Component diagram for Activity Manager
+
+    Person(owner, "Owner", "Trusted Owner identity")
+    System_Ext(opm, "Owner & Pet Manager", "Ownership and Pet status")
+    System_Ext(phs, "Pet Health Service", "Weight and activity-duration")
+
+    Container_Boundary(am, "Activity Manager") {
+        Component(types, "Activity types", "Owner-facing", "Platform-default and custom")
+        Component(activities, "Activities", "Owner-facing", "Logs, GPS, Calories burned")
+        Component(shares, "Shares", "Owner-facing", "Create, resolve, revoke")
+        ComponentDb(store, "Activity store", "System of record", "Types, Activities, Shares")
+
+        Rel(activities, types, "Resolves type")
+        Rel(shares, activities, "Share snapshot")
+        Rel(types, store, "Reads and writes")
+        Rel(activities, store, "Reads and writes")
+        Rel(shares, store, "Reads and writes")
+    }
+
+    Rel(owner, types, "Custom types")
+    Rel(owner, activities, "Logs Activities")
+    Rel(owner, shares, "Creates and revokes")
+    Rel(activities, opm, "Ownership and status", "synchronous")
+    Rel(activities, phs, "Weight and duration", "synchronous")
+
+    UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
