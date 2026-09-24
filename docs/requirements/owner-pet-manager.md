@@ -2,9 +2,21 @@
 
 ## Purpose
 
-This document defines the requirements for the **Owner & Pet Manager** service of the My Pet Care platform. It captures what the service must do so developers and agents can implement and verify behavior consistently.
+This document defines the requirements for the **Owner & Pet Manager** service of the My Pet Care platform. It states what the service must do so developers and agents can implement and verify behavior.
 
-This version covers **functional requirements** and an initial set of **non-functional requirements**. Further NFRs and additional requirement details may be added later.
+## Goals
+
+- An Owner can create and maintain their own identity and the Pets they manage, including Deactivation.
+- An Owner can control Pet list visibility so other Owners may see a **Pet summary** for each active Pet.
+- Other platform services can look up Owner and Pet identity and check whether an Owner manages a Pet before they act on that Pet.
+
+## Actors
+
+| Actor | Description |
+| ----- | ----------- |
+| **Owner** | The person who manages one or more Pets. Creates and maintains their own profile and their Pets, and sets Pet list visibility. |
+| **Other platform services** | Backend services (for example Pet Health Service or Activity Manager) that look up Owners and Pets and verify ownership before acting on a Pet. |
+| **Community service** | The future service that answers whether an Owner is still **Community owner** of any Community. Owner & Pet Manager calls it when deactivating an Owner. It owns ending **belonging** and the **Community administrator** role. |
 
 ## Scope
 
@@ -12,37 +24,51 @@ This version covers **functional requirements** and an initial set of **non-func
 
 - Owner lifecycle: create, read, update, and deactivate
 - Pet lifecycle: create, read, update, and deactivate
-- Owner↔Pet management: linking a Pet to exactly one Owner, listing an Owner’s Pets, and checking whether an Owner manages a Pet
+- Owner–Pet management: linking a Pet to exactly one Owner, listing an Owner’s Pets, and checking whether an Owner manages a Pet
 - **Pet list visibility**: Owner-controlled public/private setting for their Pet list
-- Serving other platform services that need Owner/Pet identity and ownership information
-- Initial NFRs for latency, Owner data isolation, and credential/data protection in transit
+- **Pet summary** reads for other Owners: the public list and Get Pet Summary
+- Community-owner gate on Owner Deactivation, delegated to the Community service
+- Serving other platform services that need Owner and Pet identity and ownership
+- Quality attributes for latency, Owner data isolation, and credential and data protection in transit
 
 ### Out of scope
 
-- Health metrics, Activity types, Activity logs, and social features (communities, forums, shared locations, group activities)
+- Health metrics, the Medical record, Activity types, Activities, and social features (Communities, Forums, Shared locations, Group activities), except the Community-owner check this service consumes
+- Ending an Owner’s belonging in every Community, and ending their Community administrator role, when that Owner is deactivated (carried out by the Community service)
 - Authentication protocols and login flows (this service stores Owner credential fields; how clients authenticate is defined elsewhere)
 - Ownership transfer between Owners
 - Reactivation of deactivated Owners or Pets
-- Photo upload/storage pipelines (photos are optional opaque references)
-- Offline / client-side operation without network (client concern, not this backend service)
-- Password complexity policy and encryption at rest (deferred)
-- Making Pet **details** public (only the Pet **list** may be made public)
+- Photo upload and storage pipelines (photos are optional opaque references)
+- Offline or client-side operation without a network
+- Password complexity policy and encryption at rest
 
-### Domain constraints
+## Business / domain rules
 
-- Each Pet is managed by **exactly one** Owner
-- Creating a Pet assigns the creating Owner as that Pet’s Owner
-- Deactivation is soft (records are retained and marked inactive)
-- Deactivating an Owner first deactivates that Owner’s active Pets, then deactivates the Owner
-- **Pet list visibility** defaults to **private**; the Owner may set it to **public**
-- Public Pet list does **not** expose Pet details to other Owners
+- Each Pet is managed by exactly one Owner. Creating a Pet assigns the creating Owner as that Pet’s Owner.
+- **Username** and **email** are unique among Owners, including deactivated Owners.
+- Deactivation is soft: the record is retained and marked inactive. It is not a Hard delete.
+- An Owner who is still Community owner of any Community cannot be deactivated until each Community ownership transfer is complete.
+- If Owner & Pet Manager cannot complete the Community-owner check, Owner Deactivation fails and leaves that Owner and their Pets unchanged.
+- When Owner Deactivation proceeds, it deactivates that Owner’s active Pets first, then deactivates the Owner.
+- Deactivating an Owner or Pet that is already deactivated fails. The record stays deactivated.
+- A successful Owner Deactivation ends that Owner’s belonging in every Community and their Community administrator role in each. The Community service carries out that ending. This service does not.
+- **Pet list visibility** defaults to **private**. The Owner may set it to **public**.
+- A **Pet summary** is the Pet id, name, species, breed, date of birth, sex, and photo. Breed, date of birth, and photo are present only when set.
+- When Pet list visibility is public, another Owner may read Pet summaries for that Owner’s active Pets. They cannot Get Pet.
+- This service does not return a Medical record, a Health metric, or an Activity.
 
-## Key actors
+## Constraints
 
-| Actor | Description |
-| ----- | ----------- |
-| **Owner** | A person who manages one or more Pets. Creates and maintains their own profile and their Pets. |
-| **Other platform services** | Backend services (e.g. health or activity) that look up Owners/Pets and verify ownership before acting on a Pet. |
+- This backend service is the system of record for Owners, Pets, the one-Owner-per-Pet rule, Deactivation, and Pet list visibility. Clients are separate.
+- It does not own health, activity, or Community data.
+- The Community-owner check is delegated to the Community service. Owner Deactivation fails closed when that check cannot be made.
+- Photo values are opaque references. This service does not run an upload or storage pipeline.
+- Reactivation and ownership transfer are not supported.
+- Passwords are not stored in plaintext. Password complexity policy and encryption at rest are outside this requirements version.
+
+## Assumptions
+
+- Login and credential checks happen outside this service. Owner & Pet Manager receives a trusted Owner identity on Owner-facing calls, and it can tell those calls apart from trusted calls by other platform services and by the Community service. It does not implement login.
 
 ## Functional requirements
 
@@ -54,8 +80,8 @@ This version covers **functional requirements** and an initial set of **non-func
 
 1. An Owner can be created with **username**, **email**, and **password**.
 2. **Photo** may be omitted; if provided, it is stored as an opaque reference.
-3. Create fails if **username** is already used by another Owner.
-4. Create fails if **email** is already used by another Owner.
+3. Create fails if **username** is already used by another Owner, including a deactivated Owner.
+4. Create fails if **email** is already used by another Owner, including a deactivated Owner.
 5. Create fails if any required field (username, email, password) is missing.
 6. On success, the Owner is active and can be retrieved by id or username.
 7. On success, **Pet list visibility** is **private** (see OPM-FR-011).
@@ -80,23 +106,27 @@ This version covers **functional requirements** and an initial set of **non-func
 **Acceptance criteria:**
 
 1. An active Owner can update **username**, **email**, **password**, and **photo** (photo may be set, changed, or cleared).
-2. Update fails if the new **username** is already used by another Owner.
-3. Update fails if the new **email** is already used by another Owner.
+2. Update fails if the new **username** is already used by another Owner, including a deactivated Owner.
+3. Update fails if the new **email** is already used by another Owner, including a deactivated Owner.
 4. Update of a non-existent Owner fails.
 5. Update of a deactivated Owner fails.
 
 ### OPM-FR-004 — Deactivate Owner
 
-**Description:** The service soft-deactivates an Owner. If the Owner has active Pets, those Pets are deactivated first, then the Owner.
+**Description:** The service soft-deactivates an Owner after the Community-owner check. If the Owner has active Pets, those Pets are deactivated first, then the Owner.
 
 **Acceptance criteria:**
 
-1. Deactivating an Owner with no active Pets marks that Owner inactive.
-2. Deactivating an Owner with one or more active Pets first deactivates each of those Pets, then deactivates the Owner.
-3. Deactivation of a non-existent Owner fails.
-4. Deactivation of an already deactivated Owner fails (or is a no-op that leaves the Owner deactivated — either is acceptable if documented by the implementation; callers must not observe a reactivated Owner).
-5. A deactivated Owner cannot be updated (see OPM-FR-003).
-6. Reactivation is not supported in this requirements version.
+1. Deactivation fails while the Owner is still Community owner of any Community. That Owner and their Pets stay active.
+2. Deactivation fails when the Community-owner check cannot be made. That Owner and their Pets stay active.
+3. The Community-owner check is completed before any Pet is deactivated.
+4. When the check shows the Owner is not a Community owner, and the Owner has no active Pets, the Owner is marked inactive.
+5. When the check shows the Owner is not a Community owner, and the Owner has one or more active Pets, each of those Pets is deactivated first, then the Owner is deactivated.
+6. Deactivation of a non-existent Owner fails.
+7. Deactivation of an already deactivated Owner fails in a way distinguishable from not-found. The Owner stays deactivated.
+8. A deactivated Owner cannot be updated (see OPM-FR-003).
+9. Reactivation is not supported.
+10. This operation does not end belonging or the Community administrator role.
 
 ### OPM-FR-005 — Create Pet
 
@@ -114,13 +144,13 @@ This version covers **functional requirements** and an initial set of **non-func
 
 ### OPM-FR-006 — Get Pet
 
-**Description:** The service returns a Pet by id for the Pet’s Owner and for other platform services. Other Owners do not receive Pet details.
+**Description:** The service returns a Pet by id for the Pet’s Owner and for other platform services. Other Owners use Get Pet Summary (OPM-FR-012).
 
 **Acceptance criteria:**
 
-1. The Pet’s Owner can retrieve the Pet by **id**, including Pet details.
-2. Other platform services can retrieve the Pet by **id**, including Pet details needed for platform operations.
-3. An Owner who is not the Pet’s Owner cannot retrieve that Pet’s details.
+1. The Pet’s Owner can retrieve the Pet by **id**, including the Pet’s identity fields, the Owner id, and deactivated status.
+2. Other platform services can retrieve the Pet by **id**, including the Pet’s identity fields, the Owner id, and deactivated status.
+3. An Owner who is not the Pet’s Owner cannot retrieve that Pet through Get Pet.
 4. Retrieval of a non-existent id fails in a way the caller can distinguish from success.
 5. A deactivated Pet can still be retrieved by its Owner or by other platform services (callers can observe deactivated status).
 6. The response identifies the Pet’s Owner.
@@ -146,23 +176,25 @@ This version covers **functional requirements** and an initial set of **non-func
 1. The Pet’s Owner can deactivate an active Pet; the Pet is marked inactive.
 2. Deactivation fails if the caller is not the Pet’s Owner (when invoked as an Owner-facing operation).
 3. Deactivation of a non-existent Pet fails.
-4. Deactivation of an already deactivated Pet fails (or is a no-op that leaves the Pet deactivated — either is acceptable if documented by the implementation; callers must not observe a reactivated Pet).
+4. Deactivation of an already deactivated Pet fails in a way distinguishable from not-found. The Pet stays deactivated.
 5. A deactivated Pet cannot be updated (see OPM-FR-007).
-6. Reactivation is not supported in this requirements version.
+6. Reactivation is not supported.
 
 ### OPM-FR-009 — List Pets for Owner
 
-**Description:** The service lists Pets managed by a given Owner, subject to Pet list visibility for Owner callers, and without restriction for other platform services.
+**Description:** The service lists Pets managed by a given Owner. Other Owners receive Pet summaries of active Pets only when Pet list visibility is public. The Owner and other platform services receive full Pet records and may include deactivated Pets.
 
 **Acceptance criteria:**
 
-1. An Owner can always list their **own** Pets by Owner **id**.
+1. An Owner can list their own Pets by Owner **id**.
 2. Other platform services can list Pets for an Owner by Owner **id**.
-3. Another Owner can list an Owner’s Pets only when that Owner’s **Pet list visibility** is **public**; if **private**, the request is denied (or returns no Pet list) in a way distinguishable from “Owner has no Pets.”
-4. When the list is returned, it includes active Pets for that Owner.
-5. The list may include deactivated Pets, or expose a filter for active-only vs all; if no filter is provided, behavior must be documented and consistent.
-6. Listing for a non-existent Owner fails in a way the caller can distinguish from an empty list for a valid Owner with no Pets.
-7. An Owner with no Pets receives an empty list (not an error) when the caller is allowed to list.
+3. Another Owner can list an Owner’s Pets only when that Owner’s **Pet list visibility** is **public**. If it is **private**, the request is denied in a way distinguishable from an Owner who has no Pets.
+4. Without a filter, every allowed caller receives active Pets only.
+5. The Owner and other platform services may set a filter to include deactivated Pets. Another Owner never receives deactivated Pets, including when that filter is set.
+6. When another Owner receives the list, each entry is a **Pet summary**: Pet id, name, species, breed, date of birth, sex, and photo. Breed, date of birth, and photo are included only when set.
+7. When the Owner or another platform service receives the list, each entry includes the Pet’s identity fields, the Owner id, and deactivated status.
+8. Listing for a non-existent Owner fails in a way the caller can distinguish from an empty list for a valid Owner with no Pets.
+9. An Owner with no Pets receives an empty list (not an error) when the caller is allowed to list.
 
 ### OPM-FR-010 — Check Pet ownership
 
@@ -172,23 +204,34 @@ This version covers **functional requirements** and an initial set of **non-func
 
 1. Given an Owner id and a Pet id, the service returns whether that Owner is the Pet’s Owner.
 2. The check returns negative (not owner) when the Pet exists but belongs to a different Owner.
-3. The check fails or returns a distinguishable “not found” outcome when the Owner or Pet does not exist.
-4. The check remains answerable for deactivated Owners and/or deactivated Pets (ownership relationship is still queryable).
+3. When the Owner or Pet does not exist, the outcome is distinguishable from both success and “not the owner.”
+4. The check remains answerable for deactivated Owners and deactivated Pets (the ownership relationship is still queryable).
 
 ### OPM-FR-011 — Set Pet list visibility
 
-**Description:** An Owner sets whether other Owners may see their Pet list. Visibility defaults to private and does not expose Pet details.
+**Description:** An Owner sets whether other Owners may see their active Pets as Pet summaries. Visibility defaults to private.
 
 **Acceptance criteria:**
 
 1. A newly created Owner has **Pet list visibility** set to **private**.
 2. An active Owner can set their Pet list visibility to **public** or **private**.
 3. Setting visibility on a non-existent or deactivated Owner fails.
-4. Changing visibility does not by itself expose Pet **details** to other Owners (see OPM-FR-006, OPM-NFR-003).
-5. After setting visibility to **public**, other Owners can list that Owner’s Pets per OPM-FR-009.
-6. After setting visibility to **private**, other Owners can no longer list that Owner’s Pets per OPM-FR-009.
+4. Changing visibility does not authorize another Owner to Get Pet (see OPM-FR-006).
+5. After setting visibility to **public**, other Owners can list that Owner’s active Pets and call Get Pet Summary per OPM-FR-009 and OPM-FR-012.
+6. After setting visibility to **private**, other Owners can no longer list that Owner’s Pets, and Get Pet Summary for those Pets fails per OPM-FR-012.
 
-## Non-functional requirements
+### OPM-FR-012 — Get Pet Summary
+
+**Description:** Another Owner retrieves one **Pet summary** by Pet id. The call succeeds only when that Pet is active and its Owner’s Pet list visibility is public.
+
+**Acceptance criteria:**
+
+1. An Owner who is not the Pet’s Owner can retrieve a Pet summary by Pet **id** when the Pet is active and that Owner’s **Pet list visibility** is **public**.
+2. The summary contains Pet id, name, species, breed, date of birth, sex, and photo. Breed, date of birth, and photo are included only when set.
+3. If the Pet does not exist, the Pet is deactivated, or Pet list visibility is **private**, the call fails in the same way, so those three cases cannot be told apart.
+4. The Pet’s Owner and other platform services are not the callers of this operation; they use Get Pet (OPM-FR-006). A call by the Pet’s Owner or by another platform service fails.
+
+## Quality attributes (NFRs)
 
 ### OPM-NFR-001 — Read/check latency
 
@@ -196,7 +239,7 @@ This version covers **functional requirements** and an initial set of **non-func
 
 **Acceptance criteria:**
 
-1. Under **normal load**, p95 response time is **&lt; 500ms** for: get Owner, get Pet, list Pets for Owner, and check Pet ownership.
+1. Under **normal load**, p95 response time is **< 500ms** for: get Owner, get Pet, get Pet Summary, list Pets for Owner, and check Pet ownership.
 2. The metric refers to the service’s handling time under normal load (exact harness defined in the test plan).
 
 ### OPM-NFR-002 — Write latency
@@ -205,21 +248,22 @@ This version covers **functional requirements** and an initial set of **non-func
 
 **Acceptance criteria:**
 
-1. Under **normal load**, p95 response time is **&lt; 2s** for: create/update/deactivate Owner, create/update/deactivate Pet, and set Pet list visibility.
+1. Under **normal load**, p95 response time is **< 2s** for: create, update, and deactivate Owner; create, update, and deactivate Pet; and set Pet list visibility.
 2. The metric refers to the service’s handling time under normal load (exact harness defined in the test plan).
 
 ### OPM-NFR-003 — Owner data isolation
 
-**Description:** Owners cannot access other Owners’ private data or modify other Owners’ or Pets’ information. Trusted other platform services retain their FR capabilities.
+**Description:** Owners cannot access other Owners’ private data or modify other Owners’ or Pets’ information. Another Owner may read a Pet summary only through the public list and Get Pet Summary. Trusted other platform services retain their functional-requirement capabilities.
 
 **Acceptance criteria:**
 
 1. An Owner cannot read another Owner’s **email**.
 2. An Owner cannot read another Owner’s **Pet list** when that Owner’s Pet list visibility is **private**.
-3. When Pet list visibility is **public**, another Owner may read the **list** only (not Pet details).
-4. An Owner cannot read **Pet details** for a Pet they do not own.
-5. An Owner cannot modify another Owner’s profile or a Pet they do not own (consistent with OPM-FR-003, OPM-FR-007, OPM-FR-008, OPM-FR-011).
-6. These isolation rules constrain **Owner** actors; **other platform services** may perform the lookups and ownership checks defined in the FRs.
+3. When Pet list visibility is **public**, another Owner may read **Pet summaries** for active Pets only, through the list (OPM-FR-009) and Get Pet Summary (OPM-FR-012).
+4. An Owner cannot Get Pet for a Pet they do not own.
+5. This service does not return a Medical record, a Health metric, or an Activity to any caller.
+6. An Owner cannot modify another Owner’s profile or a Pet they do not own (consistent with OPM-FR-003, OPM-FR-007, OPM-FR-008, and OPM-FR-011).
+7. These isolation rules constrain **Owner** actors. **Other platform services** may perform the lookups and ownership checks defined in the functional requirements.
 
 ### OPM-NFR-004 — Credential and data protection
 
@@ -229,5 +273,5 @@ This version covers **functional requirements** and an initial set of **non-func
 
 1. Owner **passwords** are never included in API responses.
 2. Owner passwords are not stored in plaintext.
-3. Client–service communication that carries credentials or private Owner/Pet data uses **TLS** (confidentiality in transit).
-4. Encryption at rest and password complexity policy are out of scope for this NFR version.
+3. Client–service communication that carries credentials or private Owner or Pet data uses **TLS**.
+4. Encryption at rest and password complexity policy are out of scope for this requirements version.
