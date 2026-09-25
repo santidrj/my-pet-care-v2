@@ -20,8 +20,15 @@ flowchart TB
     amSvc --> amDb
   end
 
+  subgraph auth ["Authentication Service"]
+    authSvc["Login, refresh, logout, password reset"]
+    authDb[("Login store")]
+    authSvc --> authDb
+  end
+
   community["Community collaborator"]
 
+  clients -->|"login, refresh, logout, reset"| authSvc
   clients -->|"trusted Owner identity"| opmSvc
   clients -->|"trusted Owner identity"| phsSvc
   clients -->|"trusted Owner identity"| amSvc
@@ -29,6 +36,8 @@ flowchart TB
 
   phsSvc -->|"ownership, species, active status"| opmSvc
   amSvc -->|"ownership and active status"| opmSvc
+  authSvc -->|"password hash and active status"| opmSvc
+  opmSvc -->|"revoke refresh tokens"| authSvc
   amSvc -->|"latest weight"| phsSvc
   amSvc -->|"activity-duration Health metric"| phsSvc
   opmSvc -->|"Community-owner check"| community

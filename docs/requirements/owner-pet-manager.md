@@ -35,17 +35,19 @@ This document defines the requirements for the **Owner & Pet Manager** service o
 
 - Health metrics, the Medical record, Activity types, Activities, and social features (Communities, Forums, Shared locations, Group activities), except the Community-owner check this service consumes
 - Ending an Owner’s belonging in every Community, and ending their Community administrator role, when that Owner is deactivated (carried out by the Community service)
-- Authentication protocols and login flows (this service stores Owner credential fields; how clients authenticate is defined elsewhere)
+- Login, refresh, logout, and forgotten-password reset (Authentication Service). This service stores the password hash and answers hash and active-status reads for that service.
 - Ownership transfer between Owners
 - Reactivation of deactivated Owners or Pets
 - Photo upload and storage pipelines (photos are optional opaque references)
 - Offline or client-side operation without a network
-- Password complexity policy and encryption at rest
+- Encryption at rest
 
 ## Business / domain rules
 
 - Each Pet is managed by exactly one Owner. Creating a Pet assigns the creating Owner as that Pet’s Owner.
-- **Username** and **email** are unique among Owners, including deactivated Owners.
+- **Username** and **email** are unique among Owners, including deactivated Owners. Username uniqueness is case-sensitive. Email uniqueness ignores case.
+- A **username** is one or more ASCII letters, digits, `_`, or `-`. An **email** has a single `@`, a non-empty local part, and a domain with a dot and no whitespace. No string is both.
+- A **password** is at least 8 characters and at most as long as the service allows, which is at least 64 characters. Any character is allowed, including spaces. Commonly used or known-breached passwords are rejected. No mix of letters, digits, or symbols is required (ADR-0012).
 - Deactivation is soft: the record is retained and marked inactive. It is not a Hard delete.
 - An Owner who is still Community owner of any Community cannot be deactivated until each Community ownership transfer is complete.
 - If Owner & Pet Manager cannot complete the Community-owner check, Owner Deactivation fails and leaves that Owner and their Pets unchanged.
@@ -64,11 +66,12 @@ This document defines the requirements for the **Owner & Pet Manager** service o
 - The Community-owner check is delegated to the Community service. Owner Deactivation fails closed when that check cannot be made.
 - Photo values are opaque references. This service does not run an upload or storage pipeline.
 - Reactivation and ownership transfer are not supported.
-- Passwords are not stored in plaintext. Password complexity policy and encryption at rest are outside this requirements version.
+- Passwords are not stored in plaintext. Encryption at rest is outside this requirements version. Password strength is enforced on create and on password change (ADR-0012).
 
 ## Assumptions
 
-- Login and credential checks happen outside this service. Owner & Pet Manager receives a trusted Owner identity on Owner-facing calls, and it can tell those calls apart from trusted calls by other platform services and by the Community service. It does not implement login.
+- Login and credential checks happen in the Authentication Service. Owner & Pet Manager receives a trusted Owner identity on Owner-facing calls, and it can tell those calls apart from trusted calls by other platform services and by the Community service. It does not implement login.
+- The password hash is readable by the Authentication Service only. On Deactivation and on password change, this service tells the Authentication Service to revoke that Owner’s refresh tokens. The Owner change still succeeds if that call cannot be completed.
 
 ## Functional requirements
 
@@ -80,11 +83,14 @@ This document defines the requirements for the **Owner & Pet Manager** service o
 
 1. An Owner can be created with **username**, **email**, and **password**.
 2. **Photo** may be omitted; if provided, it is stored as an opaque reference.
-3. Create fails if **username** is already used by another Owner, including a deactivated Owner.
-4. Create fails if **email** is already used by another Owner, including a deactivated Owner.
-5. Create fails if any required field (username, email, password) is missing.
-6. On success, the Owner is active and can be retrieved by id or username.
-7. On success, **Pet list visibility** is **private** (see OPM-FR-011).
+3. Create fails if **username** is not one or more ASCII letters, digits, `_`, or `-`.
+4. Create fails if **email** does not have a single `@`, a non-empty local part, and a domain with a dot and no whitespace.
+5. Create fails if **username** is already used by another Owner, including a deactivated Owner. The comparison is case-sensitive.
+6. Create fails if **email** is already used by another Owner, including a deactivated Owner. The comparison ignores case.
+7. Create fails if **password** is shorter than 8 characters, longer than the allowed maximum (at least 64 characters), or on the list of commonly used or known-breached passwords.
+8. Create fails if any required field (username, email, password) is missing.
+9. On success, the Owner is active and can be retrieved by id or username.
+10. On success, **Pet list visibility** is **private** (see OPM-FR-011).
 
 ### OPM-FR-002 — Get Owner
 
@@ -106,10 +112,14 @@ This document defines the requirements for the **Owner & Pet Manager** service o
 **Acceptance criteria:**
 
 1. An active Owner can update **username**, **email**, **password**, and **photo** (photo may be set, changed, or cleared).
-2. Update fails if the new **username** is already used by another Owner, including a deactivated Owner.
-3. Update fails if the new **email** is already used by another Owner, including a deactivated Owner.
-4. Update of a non-existent Owner fails.
-5. Update of a deactivated Owner fails.
+2. Update fails if the new **username** is not one or more ASCII letters, digits, `_`, or `-`.
+3. Update fails if the new **email** does not have a single `@`, a non-empty local part, and a domain with a dot and no whitespace.
+4. Update fails if the new **username** is already used by another Owner, including a deactivated Owner. The comparison is case-sensitive.
+5. Update fails if the new **email** is already used by another Owner, including a deactivated Owner. The comparison ignores case.
+6. Update fails if the new **password** is shorter than 8 characters, longer than the allowed maximum (at least 64 characters), or on the list of commonly used or known-breached passwords.
+7. On a successful password change, this service tells the Authentication Service to revoke that Owner’s refresh tokens. The update still succeeds if that call cannot be completed.
+8. Update of a non-existent Owner fails.
+9. Update of a deactivated Owner fails.
 
 ### OPM-FR-004 — Deactivate Owner
 
@@ -127,6 +137,7 @@ This document defines the requirements for the **Owner & Pet Manager** service o
 8. A deactivated Owner cannot be updated (see OPM-FR-003).
 9. Reactivation is not supported.
 10. This operation does not end belonging or the Community administrator role.
+11. On success, this service tells the Authentication Service to revoke that Owner’s refresh tokens. Deactivation still succeeds if that call cannot be completed.
 
 ### OPM-FR-005 — Create Pet
 
@@ -274,4 +285,5 @@ This document defines the requirements for the **Owner & Pet Manager** service o
 1. Owner **passwords** are never included in API responses.
 2. Owner passwords are not stored in plaintext.
 3. Client–service communication that carries credentials or private Owner or Pet data uses **TLS**.
-4. Encryption at rest and password complexity policy are out of scope for this requirements version.
+4. The password hash is never included in responses to Owners or to services other than the Authentication Service.
+5. Encryption at rest is out of scope for this requirements version.

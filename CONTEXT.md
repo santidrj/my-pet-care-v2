@@ -166,4 +166,8 @@ _Avoid_: PHS, health module
 The backend service that owns Activity types, Activities, and Shares. It syncs activity-duration Health metrics to Pet Health Service.
 _Avoid_: AM, exercise service
 
+**Authentication Service**:
+The backend service that establishes an Owner is who they claim to be and replaces a forgotten password. Owner and Pet identity stay with Owner & Pet Manager.
+_Avoid_: identity provider, login service, account service
+
 Community terms in this glossary are platform-wide; a backend service for Communities is not yet scoped in requirements.
