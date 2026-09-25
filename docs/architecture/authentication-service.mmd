@@ -1,0 +1,30 @@
+C4Component
+    title Component diagram for Authentication Service
+
+    Person(owner, "Owner", "Logs in, refreshes, logs out, resets a password")
+    System_Ext(opm, "Owner & Pet Manager", "Password hash and active status")
+    System_Ext(mail, "Mail channel", "One reset message to the Owner's email")
+
+    Container_Boundary(auth, "Authentication Service") {
+        Component(login, "Login", "Owner-facing", "Identifier and password, issues tokens")
+        Component(session, "Refresh and logout", "Owner-facing", "Rotates or revokes one login")
+        Component(reset, "Password reset", "Owner-facing", "Single-use link and new password")
+        Component(revocation, "Revocation", "Service-facing", "Deactivation and password change")
+        ComponentDb(store, "Login store", "System of record", "Refresh tokens, reset links, rate limits")
+
+        Rel(login, store, "Reads and writes")
+        Rel(session, store, "Reads and writes")
+        Rel(reset, store, "Reads and writes")
+        Rel(revocation, store, "Revokes refresh tokens")
+    }
+
+    Rel(owner, login, "Signs in")
+    Rel(owner, session, "Refreshes and logs out")
+    Rel(owner, reset, "Resets a forgotten password")
+    Rel(login, opm, "Hash and active status", "synchronous")
+    Rel(session, opm, "Hash and active status", "synchronous")
+    Rel(reset, opm, "Status and new password", "synchronous")
+    Rel(reset, mail, "Sends the reset link")
+    Rel(opm, revocation, "Deactivation and password change", "synchronous")
+
+    UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

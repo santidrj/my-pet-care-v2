@@ -132,6 +132,26 @@ classDiagram
         }
     }
 
+    namespace AuthenticationService {
+        class Login {
+            +id
+            +ownerId
+            +issuedAt
+            +expiresAt
+            +revoked
+        }
+        class RefreshToken {
+            +id
+            +rotated
+        }
+        class PasswordReset {
+            +id
+            +email
+            +expiresAt
+            +used
+        }
+    }
+
     Owner "1" --> "*" Pet : manages
     Pet ..> PetSummary : public summary
     Pet ..> HealthProfile : petId
@@ -153,6 +173,10 @@ classDiagram
     Activity "1" --> "1" HealthMetric : activity-duration
     Activity "1" --> "*" Share
     Share ..> ShareSnapshot : resolve
+    Owner ..> Login : ownerId
+    Login "1" --> "*" RefreshToken : rotation
+    Owner ..> PasswordReset : ownerId
 
     note for MedicalRecord "Vet visits and Medications together"
     note for Share "Audience: Owner, Forum, Group activity, or external link"
+    note for Login "Access token is issued and not stored"
