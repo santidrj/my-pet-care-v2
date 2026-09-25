@@ -10,4 +10,4 @@ Five canonical triage roles mapped to GitHub labels. See `docs/agents/triage-lab
 
 ### Domain docs
 
-Single-context layout: `CONTEXT.md` at repo root, ADRs in `docs/adr/`. See `docs/agents/domain.md`.
+Single-context layout: `CONTEXT.md` at repo root, ADRs in `docs/adr/`, requirements in `docs/requirements/`, architecture diagrams in `docs/architecture/`. See `docs/agents/domain.md`.
