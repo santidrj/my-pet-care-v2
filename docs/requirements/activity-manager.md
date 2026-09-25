@@ -8,7 +8,7 @@ This version covers **functional requirements** and an initial set of **non-func
 
 ## Goals
 
-- Let the Owner maintain a catalog of **Activity types** and log **Activities** for their Pets.
+- Let the Owner maintain a catalog of **Activity types** and register **Activities** for their Pets.
 - Let the Owner share an **Activity** inside the platform and/or out to external apps so others can see what the Pet did.
 
 ## Actors
@@ -43,7 +43,7 @@ This version covers **functional requirements** and an initial set of **non-func
 - Media upload/storage pipelines (opaque references only)
 - Automatic calorie models beyond the simple duration × weight × type-factor estimate
 - Route-based calorie or Health-metric calculation
-- Live tracking / streaming GPS while an Activity is in progress (only a completed route on log)
+- Live tracking / streaming GPS while an Activity is in progress (only a completed route when the Activity is registered)
 - Ownership transfer, authentication protocols, and offline-only clients
 - Reactivation of deactivated Pets (OPM concern)
 - Analytics dashboards, streaks, and leaderboards
@@ -51,7 +51,7 @@ This version covers **functional requirements** and an initial set of **non-func
 
 ## Business / domain rules
 
-- **Activity type** is the kind of physical activity (walk, frisbee play, running, …). **Activity** is a logged record that a Pet performed an Activity type at a point in time. Prefer these terms over Exercise / workout / session.
+- **Activity type** is the kind of physical activity (walk, frisbee play, running, …). **Activity** is a record the Owner registers that a Pet performed an Activity type at a point in time. Prefer these terms over Exercise / workout / session / log.
 - **GPS Activity** is an Activity whose Activity type is GPS-capable; create/update requires a route/GPS payload. Non-GPS types reject or ignore route payloads.
 - Custom Activity types are **Owner-scoped** (usable for all of that Owner’s Pets). Platform defaults are global and not editable or deletable by Owners.
 - Deleting a custom Activity type: **hard delete** if no historical Activity references it; otherwise **soft-retire** (hidden from the pickable catalog; existing Activities still resolve label and GPS-capable flag).
@@ -93,7 +93,7 @@ This version covers **functional requirements** and an initial set of **non-func
 **Acceptance criteria:**
 
 1. The Owner can list platform-default Activity types and their own custom Activity types.
-2. Soft-retired custom types are excluded from the pickable catalog returned for new logs.
+2. Soft-retired custom types are excluded from the pickable catalog returned for newly registered Activities.
 3. Soft-retired and active types remain resolvable by id for historical Activities and shares.
 4. The list includes, for each type, at least: identity, label/name, GPS-capable flag, and calorie factor.
 5. An Owner does not see another Owner’s custom Activity types.
@@ -135,7 +135,7 @@ This version covers **functional requirements** and an initial set of **non-func
 
 ### AM-FR-005 — Create Activity
 
-**Description:** The Owner logs an Activity (or GPS Activity) for a Pet they own.
+**Description:** The Owner registers an Activity (or GPS Activity) for a Pet they own.
 
 **Acceptance criteria:**
 

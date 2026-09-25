@@ -40,12 +40,16 @@ _Avoid_: Daily kcal, RER target, calorie budget
 A historical reading of a measurable health dimension for a Pet at a point in time. The tracked dimensions are calories consumed, weight, and activity duration.
 _Avoid_: Health data point, vital
 
+**Register**:
+The Owner’s act of recording a Meal, a Wash, or an Activity for a Pet.
+_Avoid_: Log
+
 **Meal**:
-A feeding the Owner logs for a Pet: food name, kilocalories contributed, and when it was fed. Brand, free-text labels, and notes may be included. Meals are the write path for the calories-consumed Health metric.
+A feeding the Owner registers for a Pet: food name, kilocalories contributed, and when it was fed. Brand, free-text labels, and notes may be included. Meals are the write path for the calories-consumed Health metric.
 _Avoid_: Feeding log, food entry, calorie log
 
 **Wash**:
-A completed hygiene event for a Pet (for example a bath) logged at a point in time.
+A completed hygiene event for a Pet (for example a bath), registered at a point in time.
 _Avoid_: Bath, grooming session, hygiene event
 
 **Wash schedule**:
@@ -83,8 +87,8 @@ A custom Activity type hidden from the pickable catalog because historical Activ
 _Avoid_: Archived type, disabled exercise
 
 **Activity**:
-A logged record that a Pet performed an Activity type at a point in time. Activities are the write path for the activity-duration Health metric.
-_Avoid_: Exercise log, workout, session
+A record the Owner registers that a Pet performed an Activity type at a point in time. Activities are the write path for the activity-duration Health metric.
+_Avoid_: Exercise log, workout, session, log
 
 **GPS Activity**:
 An Activity that includes a completed route because its Activity type is GPS-capable. The route does not change Calories burned or the activity-duration Health metric.

@@ -26,7 +26,7 @@ This document defines the requirements for the **Pet Health Service** of the My 
 - **Health metrics** for weight, calories consumed, and activity duration: record, read history, correct, and delete readings
 - **Meals** as the only write path for calories-consumed Health metrics, including the kilocalories-eaten sum over a from–to range
 - Recommended daily kilocalories: compute a suggestion from weight and species, allow an Owner override, and explicit recalculate
-- **Washes** and **Wash schedule**: log washes, set a start date and a recurring interval in days, and read next due and wash history
+- **Washes** and **Wash schedule**: register Washes, set a start date and a recurring interval in days, and read next due and wash history
 - **Medical record** as a read-only view of **Vet visits** and **Medications**
 - Vet visit and Medication create, read, update, and hard-delete
 - Activity-duration Health metrics written by Activity Manager
@@ -36,8 +36,8 @@ This document defines the requirements for the **Pet Health Service** of the My 
 ### Out of scope
 
 - Pet and Owner identity lifecycle (owned by Owner & Pet Manager)
-- **Activity type** catalog and **Activity** logs (owned by Activity Manager)
-- Dose-by-dose medication administration logging
+- **Activity type** catalog and **Activities** (owned by Activity Manager)
+- Dose-by-dose medication administration
 - Species-based default wash intervals
 - Vet visit attachments or clinical coding systems
 - Authentication protocols and login flows
@@ -154,7 +154,7 @@ This document defines the requirements for the **Pet Health Service** of the My 
 
 ### PHS-FR-007 — Create Meal
 
-**Description:** The Owner logs a Meal for a Pet. The Meal is the write path for a calories-consumed Health metric.
+**Description:** The Owner registers a Meal for a Pet. The Meal is the write path for a calories-consumed Health metric.
 
 **Acceptance criteria:**
 
@@ -208,14 +208,14 @@ This document defines the requirements for the **Pet Health Service** of the My 
 
 ### PHS-FR-011 — Add / list / update / delete Wash
 
-**Description:** The Owner logs completed Washes and manages wash history.
+**Description:** The Owner registers completed Washes and manages wash history.
 
 **Acceptance criteria:**
 
 1. The Pet’s Owner can add a Wash with a required **timestamp**. **Notes** may be omitted.
 2. The Pet’s Owner can list Washes for a Pet and get a Wash by id.
 3. The Pet’s Owner can update a Wash’s timestamp and notes, including clearing notes, or hard-delete a Wash.
-4. Logging a Wash is allowed when no Wash schedule is configured.
+4. Registering a Wash is allowed when no Wash schedule is configured.
 5. Writes fail if the caller is not the Pet’s Owner or the Pet is deactivated. Reads remain allowed when the Pet is deactivated.
 6. Operations on a non-existent Wash fail in a way distinguishable from success.
 
@@ -265,7 +265,7 @@ This document defines the requirements for the **Pet Health Service** of the My 
 2. An optional Vet visit id may be supplied. If supplied, it must belong to the same Pet.
 3. A Medication may be created with no Vet visit link.
 4. The Pet’s Owner can get, list, update, and hard-delete Medications for the Pet.
-5. Dose-by-dose administration logging is not supported.
+5. Dose-by-dose administration is not supported.
 6. Writes fail if the caller is not the Pet’s Owner or the Pet is deactivated. Reads remain allowed when the Pet is deactivated.
 7. Operations on a non-existent Medication fail in a way distinguishable from success.
 8. Create or update fails if a linked Vet visit does not exist or belongs to a different Pet.
