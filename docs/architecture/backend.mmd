@@ -15,25 +15,20 @@ architecture-beta
     service authApi(server)[Owner and platform token API] in auth
     service authDb(database)[Login and platform-client store] in auth
 
-    %% Each backend service owns its datastore.
     opmApi:B --> T:opmDb
     phsApi:B --> T:phsDb
     activityApi:B --> T:activityDb
     authApi:B --> T:authDb
 
-    %% Synchronous platform-JWT calls for identity, status, and credentials.
     phsApi{group}:L --> R:opmApi{group}
     activityApi{group}:L --> R:opmApi{group}
     authApi{group}:L --> R:opmApi{group}
 
-    %% Revocation and client-credentials calls to Authentication Service.
     opmApi{group}:R --> L:authApi{group}
     phsApi{group}:R --> L:authApi{group}
     activityApi{group}:R --> L:authApi{group}
 
-    %% Latest-weight reads and activity-duration Health metric synchronization.
     activityApi{group}:R --> L:phsApi{group}
 
-    %% Community-owner checks, Deactivation notices, and Community Shares.
     opmApi{group}:R --> L:community
     activityApi{group}:R --> L:community
