@@ -16,5 +16,12 @@ body:
     {
       "petListVisibility": "public"
     }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
 examples: './.resources/Set Pet list visibility.resources/examples'
 order: 6000

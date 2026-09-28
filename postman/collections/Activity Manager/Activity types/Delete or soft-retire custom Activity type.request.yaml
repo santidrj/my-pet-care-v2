@@ -16,5 +16,12 @@ pathVariables:
     value: "{{baseUrl}}"
     description: ""
 settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 204 or 200', function () {
+        pm.expect(pm.response.code).to.be.oneOf([200, 204]);
+      });
 examples: ./.resources/Delete or soft-retire custom Activity type.resources/examples
 order: 5000

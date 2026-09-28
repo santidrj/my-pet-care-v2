@@ -16,5 +16,12 @@ pathVariables:
     value: "{{baseUrl}}"
     description: ""
 settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
 examples: ./.resources/Clear Calorie override.resources/examples
 order: 2000

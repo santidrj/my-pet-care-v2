@@ -10,5 +10,12 @@ headers:
 pathVariables:
   - key: ownerId
     value: '{{ownerId}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 204', function () {
+        pm.response.to.have.status(204);
+      });
 examples: './.resources/Deactivate Owner.resources/examples'
 order: 5000

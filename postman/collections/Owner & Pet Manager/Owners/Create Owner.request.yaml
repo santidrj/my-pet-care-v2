@@ -13,9 +13,46 @@ body:
   type: json
   content: |-
     {
-      "username": "ada_lovelace",
-      "email": "ada@example.com",
+      "username": "{{ownerUsername}}",
+      "email": "{{ownerEmail}}",
       "password": "correct horse battery staple"
     }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      const suffix = Date.now().toString(36);
+      const username = `owner_${suffix}`;
+      const email = `${username}@example.com`;
+      pm.collectionVariables.set('ownerUsername', username);
+      pm.collectionVariables.set('ownerEmail', email);
+      pm.environment.set('ownerUsername', username);
+      pm.environment.set('ownerEmail', email);
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      function persist(key, value) {
+        if (value === undefined || value === null || value === '') {
+          return;
+        }
+        pm.collectionVariables.set(key, String(value));
+        pm.environment.set(key, String(value));
+      }
+
+      pm.test('HTTP status is 201', function () {
+        pm.response.to.have.status(201);
+      });
+      if (pm.response.code !== 201) {
+        return;
+      }
+      pm.test('Owner is created without a password', function () {
+        const body = pm.response.json();
+        pm.expect(body.id).to.be.a('string').and.not.empty;
+        pm.expect(body.username).to.eql(pm.collectionVariables.get('ownerUsername'));
+        pm.expect(body.active).to.eql(true);
+        pm.expect(body).to.not.have.property('password');
+        pm.expect(body).to.not.have.property('passwordHash');
+        persist('ownerId', body.id);
+      });
 examples: './.resources/Create Owner.resources/examples'
 order: 1000

@@ -15,5 +15,19 @@ auth:
   credentials:
     - key: token
       value: '{{platformAccessToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
+      if (pm.response.code !== 200) {
+        return;
+      }
+      pm.test('ownership check returns isOwner', function () {
+        pm.expect(pm.response.json()).to.have.property('isOwner');
+        pm.expect(pm.response.json().isOwner).to.be.a('boolean');
+      });
 examples: './.resources/Check Pet ownership.resources/examples'
 order: 7000

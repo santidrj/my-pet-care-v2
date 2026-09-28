@@ -7,6 +7,13 @@ headers:
     value: application/json
 queryParams:
   - key: username
-    value: ada_lovelace
+    value: '{{ownerUsername}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
 examples: './.resources/Get Owner by username.resources/examples'
 order: 2000

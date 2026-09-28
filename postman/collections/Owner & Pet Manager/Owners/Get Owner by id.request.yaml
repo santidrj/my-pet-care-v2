@@ -10,5 +10,12 @@ headers:
 pathVariables:
   - key: ownerId
     value: '{{ownerId}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
 examples: './.resources/Get Owner by id.resources/examples'
 order: 3000

@@ -19,5 +19,12 @@ pathVariables:
     value: "{{baseUrl}}"
     description: ""
 settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
 examples: ./.resources/Resolve external Share.resources/examples
 order: 4000

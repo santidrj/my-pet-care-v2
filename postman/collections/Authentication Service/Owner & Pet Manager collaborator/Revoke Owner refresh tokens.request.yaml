@@ -20,5 +20,12 @@ body:
     {
       "reason": "passwordChange"
     }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 204', function () {
+        pm.response.to.have.status(204);
+      });
 examples: './.resources/Revoke Owner refresh tokens.resources/examples'
 order: 1000

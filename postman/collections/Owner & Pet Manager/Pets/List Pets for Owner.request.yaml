@@ -15,5 +15,12 @@ queryParams:
   - key: status
     value: active
     description: active | all
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
 examples: './.resources/List Pets for Owner.resources/examples'
 order: 5000

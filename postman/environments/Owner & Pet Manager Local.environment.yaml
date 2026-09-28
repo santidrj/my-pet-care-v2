@@ -26,3 +26,11 @@ values:
   value: ''
   enabled: true
   description: UUID filled after create/get
+- key: ownerUsername
+  value: ''
+  enabled: true
+  description: Username set by Create Owner before-request
+- key: ownerEmail
+  value: ''
+  enabled: true
+  description: Email set by Create Owner before-request

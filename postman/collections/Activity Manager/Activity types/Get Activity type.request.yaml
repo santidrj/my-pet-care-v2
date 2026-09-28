@@ -15,5 +15,12 @@ pathVariables:
     value: "{{baseUrl}}"
     description: ""
 settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
 examples: ./.resources/Get Activity type.resources/examples
 order: 3000

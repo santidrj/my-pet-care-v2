@@ -27,5 +27,31 @@ body:
       "recipientOwnerId": "{{recipientOwnerId}}"
     }
 settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      function persist(key, value) {
+        if (value === undefined || value === null || value === '') {
+          return;
+        }
+        pm.collectionVariables.set(key, String(value));
+        pm.environment.set(key, String(value));
+      }
+
+      pm.test('HTTP status is 201', function () {
+        pm.response.to.have.status(201);
+      });
+      if (pm.response.code !== 201) {
+        return;
+      }
+      pm.test('Share is created', function () {
+        const body = pm.response.json();
+        pm.expect(body.id).to.be.a('string').and.not.empty;
+        persist('shareId', body.id);
+        if (typeof body.link === 'string' && body.link.length > 0) {
+          persist('externalShareToken', body.link.split('/').filter(Boolean).pop());
+        }
+      });
 examples: ./.resources/Create Share.resources/examples
 order: 1000

@@ -16,5 +16,12 @@ pathVariables:
     value: "{{baseUrl}}"
     description: ""
 settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 204', function () {
+        pm.response.to.have.status(204);
+      });
 examples: ./.resources/Revoke Share.resources/examples
 order: 3000

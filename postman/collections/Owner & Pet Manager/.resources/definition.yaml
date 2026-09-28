@@ -23,6 +23,10 @@ variables:
     value: '{{petId}}'
   - key: otherOwnerId
     value: '{{otherOwnerId}}'
+  - key: ownerUsername
+    value: '{{ownerUsername}}'
+  - key: ownerEmail
+    value: '{{ownerEmail}}'
 auth:
   type: bearer
   credentials:

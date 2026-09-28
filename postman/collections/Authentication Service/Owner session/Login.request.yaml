@@ -18,5 +18,31 @@ body:
       "identifier": "ada_lovelace",
       "password": "correct horse battery staple"
     }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      function persist(key, value) {
+        if (value === undefined || value === null || value === '') {
+          return;
+        }
+        pm.collectionVariables.set(key, String(value));
+        pm.environment.set(key, String(value));
+      }
+
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
+      if (pm.response.code !== 200) {
+        return;
+      }
+      pm.test('Owner session tokens are issued', function () {
+        const body = pm.response.json();
+        pm.expect(body.accessToken).to.be.a('string').and.not.empty;
+        pm.expect(body.tokenType).to.eql('Bearer');
+        pm.expect(body.refreshToken).to.be.a('string').and.not.empty;
+        persist('ownerAccessToken', body.accessToken);
+        persist('refreshToken', body.refreshToken);
+      });
 examples: './.resources/Login.resources/examples'
 order: 1000
