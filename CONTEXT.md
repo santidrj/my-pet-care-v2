@@ -23,7 +23,7 @@ Permanently removing a record so it is no longer retrievable. Used for entities 
 _Avoid_: Delete, purge, remove
 
 **Pet list visibility**:
-An Owner-level setting that controls whether other Owners may see that Owner’s list of Pets. Defaults to private; the Owner may set it to public. Does not expose Pet details.
+An Owner-level setting that controls whether other Owners may read that Owner’s list of Pets as **Pet summaries**. Defaults to private; the Owner may set it to public. It does not authorize Get Pet or expose fields beyond a Pet summary.
 _Avoid_: Profile visibility, pet privacy
 
 **Pet summary**:
@@ -33,7 +33,7 @@ _Avoid_: Public pet, pet preview, pet card
 ### Health
 
 **Health profile**:
-The latest health-oriented values for a Pet: latest weight and recommended daily kilocalories, distinct from the Pet’s identity fields owned elsewhere. A new weight reading sets the profile’s latest weight and appends a weight Health metric for history.
+The latest health-oriented values for a Pet: latest weight and recommended daily kilocalories, distinct from the Pet’s identity fields owned elsewhere. Recording a weight appends a weight Health metric; the profile’s latest weight is always the remaining weight metric with the latest timestamp (or empty when none remain).
 _Avoid_: Health data, health record, pet profile
 
 **Recommended daily kilocalories**:
@@ -57,7 +57,7 @@ A completed hygiene event for a Pet (for example a bath), registered at a point 
 _Avoid_: Bath, grooming session, hygiene event
 
 **Wash schedule**:
-A recurring interval set by the Owner that determines when a Pet’s next Wash is due, from the last Wash plus the interval.
+A recurring interval set by the Owner that determines when a Pet’s next Wash is due. When a schedule exists, the next due time is from the last Wash plus the interval, or from the schedule’s start date when no Wash has been registered yet. When no schedule exists, the Pet is not due for a Wash by schedule.
 _Avoid_: Wash appointment, hygiene plan, grooming schedule
 
 **Medical record**:
@@ -175,7 +175,15 @@ The backend service that owns Activity types, Activities, and Shares. It syncs a
 _Avoid_: AM, exercise service
 
 **Authentication Service**:
-The backend service that establishes an Owner is who they claim to be and replaces a forgotten password. Owner and Pet identity stay with Owner & Pet Manager.
+The backend service that establishes an Owner is who they claim to be, replaces a forgotten password, and issues platform-service access tokens for service-to-service calls. Owner and Pet identity stay with Owner & Pet Manager.
 _Avoid_: identity provider, login service, account service
 
-Community terms in this glossary are platform-wide; a backend service for Communities is not yet scoped in requirements.
+**Platform-service authenticator**:
+The shared module each platform service uses to verify inbound Authentication Service Bearer JWTs and to obtain and present platform-service credentials on outbound calls. It establishes the actor; it does not enforce per-route authorization.
+_Avoid_: auth middleware, API gateway auth, identity provider
+
+**Species**:
+The Pet’s biological kind as stored by Owner & Pet Manager. Allowed values are `dog` and `cat`. Pet Health Service uses species for recommended daily kilocalories multipliers.
+_Avoid_: animal type, pet type
+
+Community terms in this glossary are platform-wide; a backend service for Communities is not yet scoped in requirements. The **Community collaborator** is the future integration point other services call for Community-owner checks, ending belonging, and Forum or Group activity Share acceptance.
