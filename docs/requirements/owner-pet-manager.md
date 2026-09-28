@@ -4,11 +4,14 @@
 
 This document defines the requirements for the **Owner & Pet Manager** service of the My Pet Care platform. It states what the service must do so developers and agents can implement and verify behavior.
 
+HTTP method and path mapping for these requirements: [`owner-pet-manager-api.md`](./owner-pet-manager-api.md).
+
 ## Goals
 
 - An Owner can create and maintain their own identity and the Pets they manage, including Deactivation.
 - An Owner can control Pet list visibility so other Owners may see a **Pet summary** for each active Pet.
 - Other platform services can look up Owner and Pet identity and check whether an Owner manages a Pet before they act on that Pet.
+- The Authentication Service can read password hash and active status, and can set a new password after a completed reset.
 
 ## Actors
 
@@ -16,6 +19,7 @@ This document defines the requirements for the **Owner & Pet Manager** service o
 | ----- | ----------- |
 | **Owner** | The person who manages one or more Pets. Creates and maintains their own profile and their Pets, and sets Pet list visibility. |
 | **Other platform services** | Backend services (for example Pet Health Service or Activity Manager) that look up Owners and Pets and verify ownership before acting on a Pet. |
+| **Authentication Service** | Reads password hash and active status for login and refresh, and sets a new password when a forgotten-password reset completes. |
 | **Community service** | The future service that answers whether an Owner is still **Community owner** of any Community. Owner & Pet Manager calls it when deactivating an Owner. It owns ending **belonging** and the **Community administrator** role. |
 
 ## Scope
@@ -29,13 +33,14 @@ This document defines the requirements for the **Owner & Pet Manager** service o
 - **Pet summary** reads for other Owners: the public list and Get Pet Summary
 - Community-owner gate on Owner Deactivation, delegated to the Community service
 - Serving other platform services that need Owner and Pet identity and ownership
+- Password hash and active-status reads for the Authentication Service, and setting a new password when that service completes a reset
 - Quality attributes for latency, Owner data isolation, and credential and data protection in transit
 
 ### Out of scope
 
 - Health metrics, the Medical record, Activity types, Activities, and social features (Communities, Forums, Shared locations, Group activities), except the Community-owner check this service consumes
 - Ending an Owner’s belonging in every Community, and ending their Community administrator role, when that Owner is deactivated (carried out by the Community service)
-- Login, refresh, logout, and forgotten-password reset (Authentication Service). This service stores the password hash and answers hash and active-status reads for that service.
+- Login, refresh, logout, and forgotten-password reset flows (Authentication Service). This service stores the password hash and serves the credential operations those flows need.
 - Ownership transfer between Owners
 - Reactivation of deactivated Owners or Pets
 - Photo upload and storage pipelines (photos are optional opaque references)
@@ -200,8 +205,8 @@ This document defines the requirements for the **Owner & Pet Manager** service o
 1. An Owner can list their own Pets by Owner **id**.
 2. Other platform services can list Pets for an Owner by Owner **id**.
 3. Another Owner can list an Owner’s Pets only when that Owner’s **Pet list visibility** is **public**. If it is **private**, the request is denied in a way distinguishable from an Owner who has no Pets.
-4. Without a filter, every allowed caller receives active Pets only.
-5. The Owner and other platform services may set a filter to include deactivated Pets. Another Owner never receives deactivated Pets, including when that filter is set.
+4. Without a filter, every allowed caller receives active Pets only. The HTTP API expresses this as `status=active` (the default when `status` is omitted); `status=all` includes deactivated Pets for callers allowed to see them.
+5. The Owner and other platform services may set `status=all` to include deactivated Pets. Another Owner never receives deactivated Pets, including when that filter is set.
 6. When another Owner receives the list, each entry is a **Pet summary**: Pet id, name, species, breed, date of birth, sex, and photo. Breed, date of birth, and photo are included only when set.
 7. When the Owner or another platform service receives the list, each entry includes the Pet’s identity fields, the Owner id, and deactivated status.
 8. Listing for a non-existent Owner fails in a way the caller can distinguish from an empty list for a valid Owner with no Pets.
@@ -242,6 +247,42 @@ This document defines the requirements for the **Owner & Pet Manager** service o
 3. If the Pet does not exist, the Pet is deactivated, or Pet list visibility is **private**, the call fails in the same way, so those three cases cannot be told apart.
 4. The Pet’s Owner and other platform services are not the callers of this operation; they use Get Pet (OPM-FR-006). A call by the Pet’s Owner or by another platform service fails.
 
+### OPM-FR-013 — Get credentials by identifier
+
+**Description:** The service returns the password hash and active status for an Owner looked up by username or email, for the Authentication Service only (login).
+
+**Acceptance criteria:**
+
+1. Given one **identifier** string, a valid email is looked up with case ignored; a legal username is looked up case-sensitively (same rules as Create Owner and the Authentication Service).
+2. An identifier that is neither a legal username nor a valid email fails as a validation error.
+3. On success, the response includes **owner id**, **password hash**, and whether the Owner is active.
+4. Lookup of an unknown identifier fails in a way distinguishable from success and from a validation error.
+5. Only the Authentication Service may call this operation. An Owner or any other platform service must not receive the password hash.
+
+### OPM-FR-014 — Get credentials by Owner id
+
+**Description:** The service returns the password hash and active status for an Owner by id, for the Authentication Service only (refresh).
+
+**Acceptance criteria:**
+
+1. Given an Owner **id**, the response includes **owner id**, **password hash**, and whether the Owner is active.
+2. Lookup of a non-existent id fails in a way the caller can distinguish from success.
+3. A deactivated Owner can still be retrieved this way (callers observe `active` false).
+4. Only the Authentication Service may call this operation. An Owner or any other platform service must not receive the password hash.
+
+### OPM-FR-015 — Set password from Authentication Service
+
+**Description:** The Authentication Service sets a new password for an Owner after a completed forgotten-password reset. Strength rules are the same as on Create and Update Owner.
+
+**Acceptance criteria:**
+
+1. The Authentication Service can set a new **password** for an existing Owner by id.
+2. Set fails if **password** is shorter than 8 characters, longer than the allowed maximum (at least 64 characters), or on the list of commonly used or known-breached passwords.
+3. Set of a non-existent Owner fails.
+4. Set of a deactivated Owner fails.
+5. On success, this service tells the Authentication Service to revoke that Owner’s refresh tokens. The password change still succeeds if that call cannot be completed.
+6. Only the Authentication Service may call this operation. The response never includes the password or the password hash.
+
 ## Quality attributes (NFRs)
 
 ### OPM-NFR-001 — Read/check latency
@@ -250,7 +291,7 @@ This document defines the requirements for the **Owner & Pet Manager** service o
 
 **Acceptance criteria:**
 
-1. Under **normal load**, p95 response time is **< 500ms** for: get Owner, get Pet, get Pet Summary, list Pets for Owner, and check Pet ownership.
+1. Under **normal load**, p95 response time is **< 500ms** for: get Owner, get Pet, get Pet Summary, list Pets for Owner, check Pet ownership, get credentials by identifier, and get credentials by Owner id.
 2. The metric refers to the service’s handling time under normal load (exact harness defined in the test plan).
 
 ### OPM-NFR-002 — Write latency
@@ -259,7 +300,7 @@ This document defines the requirements for the **Owner & Pet Manager** service o
 
 **Acceptance criteria:**
 
-1. Under **normal load**, p95 response time is **< 2s** for: create, update, and deactivate Owner; create, update, and deactivate Pet; and set Pet list visibility.
+1. Under **normal load**, p95 response time is **< 2s** for: create, update, and deactivate Owner; create, update, and deactivate Pet; set Pet list visibility; and set password from Authentication Service.
 2. The metric refers to the service’s handling time under normal load (exact harness defined in the test plan).
 
 ### OPM-NFR-003 — Owner data isolation

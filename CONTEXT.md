@@ -26,6 +26,10 @@ _Avoid_: Delete, purge, remove
 An Owner-level setting that controls whether other Owners may see that Owner’s list of Pets. Defaults to private; the Owner may set it to public. Does not expose Pet details.
 _Avoid_: Profile visibility, pet privacy
 
+**Pet summary**:
+The limited Pet identity another Owner may read when Pet list visibility is public: Pet id, name, species, breed, date of birth, sex, and photo. Breed, date of birth, and photo are present only when set. It is not the full Pet returned by Get Pet.
+_Avoid_: Public pet, pet preview, pet card
+
 ### Health
 
 **Health profile**:

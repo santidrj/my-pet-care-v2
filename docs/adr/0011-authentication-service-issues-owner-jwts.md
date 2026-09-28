@@ -4,7 +4,7 @@ status: accepted
 
 # Authentication Service issues Owner Bearer JWTs
 
-Every call to **Owner & Pet Manager**, **Pet Health Service**, and **Activity Manager** carries a Bearer JWT, except resolution of an external Share link. Each Fastify service verifies the signature with `jose`. The **Authentication Service** in this repo signs Owner tokens. This supersedes ADR-0008, which left login and token issuing outside the repo.
+Every call to **Owner & Pet Manager**, **Pet Health Service**, and **Activity Manager** carries a Bearer JWT, except resolution of an external Share link and **Create Owner** (`POST /owners` on Owner & Pet Manager; ADR-0015). Each Fastify service verifies the signature with `jose`. The **Authentication Service** in this repo signs Owner tokens. This supersedes ADR-0008, which left login and token issuing outside the repo.
 
 The claims name the actor. An Owner call carries that Owner’s id. A platform call carries which service is calling: Owner & Pet Manager, Pet Health Service, Activity Manager, or the Community collaborator. The Authentication Service issues Owner tokens only. It does not issue platform-service tokens. An external Share link stays a capability URL and does not use a JWT.
 
