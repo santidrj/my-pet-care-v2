@@ -1,0 +1,39 @@
+$kind: http-example
+name: Resource not found (or indistinguishable failure for Pet summary)
+request:
+  url: "{{baseUrl}}/owners/:ownerId/pets?status=active"
+  method: GET
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: "Added as a part of security scheme: bearer"
+    - key: Accept
+      value: application/json
+  queryParams:
+    status: active
+  pathVariables:
+    - key: ownerId
+      value: <uuid>
+      disabled: false
+      description: "(Required) "
+    - key: baseUrl
+      value: "{{baseUrl}}"
+      description: ""
+  body:
+    type: text
+    content: ""
+response:
+  statusCode: 404
+  statusText: Not Found
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "type": "urn:my-pet-care:not-found",
+        "title": "Not Found",
+        "status": 404,
+        "detail": "No route matches this request."
+      }
+order: 4000

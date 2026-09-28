@@ -1,0 +1,22 @@
+$kind: http-request
+description: OPM-FR-005. Assigns the path Owner as the Pet's sole Owner.
+url: '{{baseUrl}}/owners/:ownerId/pets'
+method: POST
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Accept
+    value: application/json
+pathVariables:
+  - key: ownerId
+    value: '{{ownerId}}'
+body:
+  type: json
+  content: |-
+    {
+      "name": "Nori",
+      "species": "cat",
+      "sex": "female"
+    }
+examples: './.resources/Create Pet.resources/examples'
+order: 1000

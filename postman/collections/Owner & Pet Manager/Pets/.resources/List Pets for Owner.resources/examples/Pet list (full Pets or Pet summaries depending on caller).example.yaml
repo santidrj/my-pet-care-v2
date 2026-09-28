@@ -1,0 +1,58 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/owners/:ownerId/pets?status=active"
+  method: GET
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: "Added as a part of security scheme: bearer"
+    - key: Accept
+      value: application/json
+  queryParams:
+    status: active
+  pathVariables:
+    - key: ownerId
+      value: <uuid>
+      disabled: false
+      description: "(Required) "
+    - key: baseUrl
+      value: "{{baseUrl}}"
+      description: ""
+  body:
+    type: text
+    content: ""
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "items": [
+          {
+            "id": "bbfd7216-5ba6-5488-2fb1-bfa1cd5b8a2d",
+            "ownerId": "3b55ee36-8584-8414-3657-2757221a8d92",
+            "name": "string",
+            "species": "string",
+            "sex": "female",
+            "active": true,
+            "breed": "string",
+            "dateOfBirth": "1992-09-06",
+            "photo": "string"
+          },
+          {
+            "id": "6edbb103-7d6e-74e9-e4b7-9f35591ef094",
+            "ownerId": "244aa9f8-af1f-8039-e59c-37f6e3aaaaa0",
+            "name": "string",
+            "species": "string",
+            "sex": "unknown",
+            "active": true,
+            "breed": "string",
+            "dateOfBirth": "2005-03-09",
+            "photo": "string"
+          }
+        ]
+      }
+order: 1000

@@ -1,0 +1,28 @@
+name: Owner & Pet Manager Local
+values:
+- key: baseUrl
+  value: http://localhost:3001
+  enabled: true
+  description: Owner & Pet Manager base URL (local default port 3001)
+- key: ownerAccessToken
+  value: ''
+  enabled: true
+  type: secret
+  description: Bearer JWT; leave empty until Auth issues tokens
+- key: platformAccessToken
+  value: ''
+  enabled: true
+  type: secret
+  description: Bearer JWT; leave empty until Auth issues tokens
+- key: ownerId
+  value: ''
+  enabled: true
+  description: UUID filled after create/get
+- key: petId
+  value: ''
+  enabled: true
+  description: UUID filled after create/get
+- key: otherOwnerId
+  value: ''
+  enabled: true
+  description: UUID filled after create/get

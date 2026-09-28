@@ -1,0 +1,19 @@
+$kind: http-request
+description: OPM-FR-010. Platform services only. Answerable for deactivated Owners and Pets.
+url: '{{baseUrl}}/pets/:petId/owners/:ownerId'
+method: GET
+headers:
+  - key: Accept
+    value: application/json
+pathVariables:
+  - key: petId
+    value: '{{petId}}'
+  - key: ownerId
+    value: '{{ownerId}}'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{platformAccessToken}}'
+examples: './.resources/Check Pet ownership.resources/examples'
+order: 7000

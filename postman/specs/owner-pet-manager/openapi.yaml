@@ -1,0 +1,808 @@
+openapi: 3.1.0
+info:
+  title: Owner & Pet Manager
+  version: 0.1.0
+  description: |
+    REST API for the Owner & Pet Manager service (ADR-0004).
+
+    Behavioral requirements: `docs/requirements/owner-pet-manager.md`.
+    HTTP route map: `docs/requirements/owner-pet-manager-api.md`.
+
+    `DELETE` on Owner or Pet means **Deactivation** (soft), not a Hard delete.
+    `POST /owners` is public (ADR-0015); every other route requires a Bearer JWT
+    (ADR-0011). Errors use RFC 9457 Problem Details (ADR-0010, ADR-0014). At runtime the error Content-Type is `application/problem+json`; this OpenAPI file documents those bodies under `application/json` so Postman lint accepts the media type.
+servers:
+  - url: '{baseUrl}'
+    description: Local or deployed Owner & Pet Manager base URL
+    variables:
+      baseUrl:
+        default: http://localhost:3001
+tags:
+  - name: Owners
+    description: Owner identity, profile, Deactivation, and Pet list visibility
+  - name: Authentication collaborator
+    description: Auth-only credential reads and password set (Authentication Service claim)
+  - name: Pets
+    description: Pet identity under an Owner, Pet summary, and ownership check
+  - name: Health
+    description: Process liveness (not an OPM-FR)
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      tags: [Health]
+      operationId: getHealth
+      summary: Liveness
+      security: []
+      responses:
+        '200':
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+  /owners:
+    post:
+      tags: [Owners]
+      operationId: createOwner
+      summary: Create Owner
+      description: OPM-FR-001. Public registration (ADR-0015); no Bearer JWT.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOwnerRequest'
+      responses:
+        '201':
+          description: Owner created (active, Pet list visibility private)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Owner'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      tags: [Owners]
+      operationId: getOwnerByUsername
+      summary: Get Owner by username
+      description: OPM-FR-002 username lookup.
+      parameters:
+        - name: username
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/Username'
+      responses:
+        '200':
+          description: Owner found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Owner'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /owners/credentials:
+    get:
+      tags: [Authentication collaborator]
+      operationId: getCredentialsByIdentifier
+      summary: Get credentials by identifier
+      description: |
+        OPM-FR-013. Authentication Service only. Identifier is a username or email
+        (same parsing rules as Auth).
+      parameters:
+        - name: identifier
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        '200':
+          description: Credentials for the matched Owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerCredentials'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /owners/{ownerId}:
+    parameters:
+      - $ref: '#/components/parameters/OwnerId'
+    get:
+      tags: [Owners]
+      operationId: getOwnerById
+      summary: Get Owner by id
+      description: |
+        OPM-FR-002. Another Owner does not receive email. Password and hash never
+        returned.
+      responses:
+        '200':
+          description: Owner found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Owner'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags: [Owners]
+      operationId: updateOwner
+      summary: Update Owner
+      description: OPM-FR-003. Owning Owner only. Password change notifies Auth to revoke refresh tokens.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOwnerRequest'
+      responses:
+        '200':
+          description: Owner updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Owner'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [Owners]
+      operationId: deactivateOwner
+      summary: Deactivate Owner
+      description: |
+        OPM-FR-004. Soft Deactivation (not Hard delete). Community-owner gate;
+        deactivates active Pets first.
+      responses:
+        '204':
+          description: Owner deactivated
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /owners/{ownerId}/pet-list-visibility:
+    parameters:
+      - $ref: '#/components/parameters/OwnerId'
+    put:
+      tags: [Owners]
+      operationId: setPetListVisibility
+      summary: Set Pet list visibility
+      description: OPM-FR-011.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetPetListVisibilityRequest'
+      responses:
+        '200':
+          description: Visibility updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PetListVisibilityResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /owners/{ownerId}/credentials:
+    parameters:
+      - $ref: '#/components/parameters/OwnerId'
+    get:
+      tags: [Authentication collaborator]
+      operationId: getCredentialsByOwnerId
+      summary: Get credentials by Owner id
+      description: OPM-FR-014. Authentication Service only (refresh).
+      responses:
+        '200':
+          description: Credentials for the Owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerCredentials'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /owners/{ownerId}/credentials/password:
+    parameters:
+      - $ref: '#/components/parameters/OwnerId'
+    put:
+      tags: [Authentication collaborator]
+      operationId: setPasswordFromAuthenticationService
+      summary: Set password from Authentication Service
+      description: OPM-FR-015. Completed forgotten-password reset. Auth-only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetPasswordRequest'
+      responses:
+        '200':
+          description: Password updated (no password or hash in body)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetPasswordResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /owners/{ownerId}/pets:
+    parameters:
+      - $ref: '#/components/parameters/OwnerId'
+    post:
+      tags: [Pets]
+      operationId: createPet
+      summary: Create Pet
+      description: OPM-FR-005. Assigns the path Owner as the Pet’s sole Owner.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePetRequest'
+      responses:
+        '201':
+          description: Pet created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      tags: [Pets]
+      operationId: listPetsForOwner
+      summary: List Pets for Owner
+      description: |
+        OPM-FR-009. Owner and platform services receive full Pet records.
+        Another Owner receives Pet summaries only when Pet list visibility is
+        public, and never deactivated Pets even with `status=all`.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Omit or `active` for active Pets only; `all` includes deactivated for allowed callers.
+          schema:
+            type: string
+            enum: [active, all]
+            default: active
+      responses:
+        '200':
+          description: Pet list (full Pets or Pet summaries depending on caller)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PetListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /pets/{petId}:
+    parameters:
+      - $ref: '#/components/parameters/PetId'
+    get:
+      tags: [Pets]
+      operationId: getPet
+      summary: Get Pet
+      description: OPM-FR-006. Pet’s Owner or platform services. Other Owners use Get Pet Summary.
+      responses:
+        '200':
+          description: Pet found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags: [Pets]
+      operationId: updatePet
+      summary: Update Pet
+      description: OPM-FR-007. Pet’s Owner only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePetRequest'
+      responses:
+        '200':
+          description: Pet updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [Pets]
+      operationId: deactivatePet
+      summary: Deactivate Pet
+      description: OPM-FR-008. Soft Deactivation (not Hard delete).
+      responses:
+        '204':
+          description: Pet deactivated
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /pets/{petId}/summary:
+    parameters:
+      - $ref: '#/components/parameters/PetId'
+    get:
+      tags: [Pets]
+      operationId: getPetSummary
+      summary: Get Pet Summary
+      description: |
+        OPM-FR-012. Other Owners only. Succeeds only when the Pet is active and
+        its Owner’s Pet list visibility is public. Missing, deactivated, and
+        private fail the same way.
+      responses:
+        '200':
+          description: Pet summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PetSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /pets/{petId}/owners/{ownerId}:
+    parameters:
+      - $ref: '#/components/parameters/PetId'
+      - $ref: '#/components/parameters/OwnerId'
+    get:
+      tags: [Pets]
+      operationId: checkPetOwnership
+      summary: Check Pet ownership
+      description: OPM-FR-010. Platform services only. Answerable for deactivated Owners and Pets.
+      responses:
+        '200':
+          description: Both ids exist; ownership result returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnershipCheck'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Owner JWT carries the Owner id. Platform JWT names the calling service
+        (Pet Health Service, Activity Manager, Authentication Service, or
+        Community collaborator).
+  parameters:
+    OwnerId:
+      name: ownerId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    PetId:
+      name: petId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+  responses:
+    BadRequest:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    Unauthorized:
+      description: Missing or invalid Bearer JWT
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    Forbidden:
+      description: Caller is not allowed for this operation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    NotFound:
+      description: Resource not found (or indistinguishable failure for Pet summary)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            routeNotFound:
+              summary: No matching route (skeleton)
+              value:
+                type: urn:my-pet-care:not-found
+                title: Not Found
+                status: 404
+                detail: No route matches this request.
+    Conflict:
+      description: Conflict (duplicate username/email, already deactivated, Community-owner gate)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    InternalError:
+      description: Unexpected failure
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            internal:
+              value:
+                type: urn:my-pet-care:internal-error
+                title: Internal Server Error
+                status: 500
+                detail: The service failed to handle this request.
+  schemas:
+    Uuid:
+      type: string
+      format: uuid
+    Username:
+      type: string
+      minLength: 1
+      pattern: '^[A-Za-z0-9_-]+$'
+      description: One or more ASCII letters, digits, `_`, or `-`. Uniqueness is case-sensitive.
+    Email:
+      type: string
+      format: email
+      description: Single `@`, non-empty local part, domain with a dot and no whitespace. Uniqueness ignores case.
+    Password:
+      type: string
+      minLength: 8
+      maxLength: 128
+      description: |
+        At least 8 characters; service allows at least 64 (documented max 128).
+        Any character including spaces. Commonly used or known-breached passwords
+        are rejected. No character-class mix required (ADR-0012).
+    PhotoRef:
+      type: string
+      minLength: 1
+      description: Opaque photo reference. This service does not run upload or storage.
+    PetListVisibility:
+      type: string
+      enum: [private, public]
+    Sex:
+      type: string
+      enum: [male, female, unknown]
+    HealthStatus:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          const: ok
+    ProblemDetails:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, detail]
+      properties:
+        type:
+          type: string
+          description: Stable URN (ADR-0014)
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+    CreateOwnerRequest:
+      type: object
+      additionalProperties: false
+      required: [username, email, password]
+      properties:
+        username:
+          $ref: '#/components/schemas/Username'
+        email:
+          $ref: '#/components/schemas/Email'
+        password:
+          $ref: '#/components/schemas/Password'
+        photo:
+          $ref: '#/components/schemas/PhotoRef'
+    UpdateOwnerRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        username:
+          $ref: '#/components/schemas/Username'
+        email:
+          $ref: '#/components/schemas/Email'
+        password:
+          $ref: '#/components/schemas/Password'
+        photo:
+          oneOf:
+            - $ref: '#/components/schemas/PhotoRef'
+            - type: 'null'
+          description: Set, change, or clear (null) the photo reference.
+    Owner:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - username
+        - active
+        - petListVisibility
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        username:
+          $ref: '#/components/schemas/Username'
+        email:
+          $ref: '#/components/schemas/Email'
+          description: Omitted when another Owner retrieves this Owner.
+        active:
+          type: boolean
+          description: false when deactivated
+        petListVisibility:
+          $ref: '#/components/schemas/PetListVisibility'
+        photo:
+          $ref: '#/components/schemas/PhotoRef'
+    SetPetListVisibilityRequest:
+      type: object
+      additionalProperties: false
+      required: [petListVisibility]
+      properties:
+        petListVisibility:
+          $ref: '#/components/schemas/PetListVisibility'
+    PetListVisibilityResponse:
+      type: object
+      additionalProperties: false
+      required: [ownerId, petListVisibility]
+      properties:
+        ownerId:
+          $ref: '#/components/schemas/Uuid'
+        petListVisibility:
+          $ref: '#/components/schemas/PetListVisibility'
+    OwnerCredentials:
+      type: object
+      additionalProperties: false
+      required: [ownerId, passwordHash, active]
+      properties:
+        ownerId:
+          $ref: '#/components/schemas/Uuid'
+        passwordHash:
+          type: string
+          minLength: 1
+          description: Argon2id hash string (ADR-0012). Auth-only responses.
+        active:
+          type: boolean
+    SetPasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [password]
+      properties:
+        password:
+          $ref: '#/components/schemas/Password'
+    SetPasswordResponse:
+      type: object
+      additionalProperties: false
+      required: [ownerId]
+      properties:
+        ownerId:
+          $ref: '#/components/schemas/Uuid'
+    CreatePetRequest:
+      type: object
+      additionalProperties: false
+      required: [name, species, sex]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        species:
+          type: string
+          minLength: 1
+        sex:
+          $ref: '#/components/schemas/Sex'
+        breed:
+          type: string
+          minLength: 1
+        dateOfBirth:
+          type: string
+          format: date
+        photo:
+          $ref: '#/components/schemas/PhotoRef'
+    UpdatePetRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+        species:
+          type: string
+          minLength: 1
+        sex:
+          $ref: '#/components/schemas/Sex'
+        breed:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
+        dateOfBirth:
+          oneOf:
+            - type: string
+              format: date
+            - type: 'null'
+        photo:
+          oneOf:
+            - $ref: '#/components/schemas/PhotoRef'
+            - type: 'null'
+    Pet:
+      type: object
+      additionalProperties: false
+      required: [id, ownerId, name, species, sex, active]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        ownerId:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
+          minLength: 1
+        species:
+          type: string
+          minLength: 1
+        sex:
+          $ref: '#/components/schemas/Sex'
+        breed:
+          type: string
+          minLength: 1
+        dateOfBirth:
+          type: string
+          format: date
+        photo:
+          $ref: '#/components/schemas/PhotoRef'
+        active:
+          type: boolean
+          description: false when deactivated
+    PetSummary:
+      type: object
+      additionalProperties: false
+      required: [id, name, species, sex]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
+          minLength: 1
+        species:
+          type: string
+          minLength: 1
+        sex:
+          $ref: '#/components/schemas/Sex'
+        breed:
+          type: string
+          minLength: 1
+        dateOfBirth:
+          type: string
+          format: date
+        photo:
+          $ref: '#/components/schemas/PhotoRef'
+    PetListResponse:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/Pet'
+              - $ref: '#/components/schemas/PetSummary'
+    OwnershipCheck:
+      type: object
+      additionalProperties: false
+      required: [isOwner]
+      properties:
+        isOwner:
+          type: boolean

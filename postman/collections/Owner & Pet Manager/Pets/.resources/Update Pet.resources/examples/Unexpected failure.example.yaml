@@ -1,0 +1,44 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/pets/:petId"
+  method: PATCH
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: "Added as a part of security scheme: bearer"
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: petId
+      value: <uuid>
+      disabled: false
+      description: "(Required) "
+    - key: baseUrl
+      value: "{{baseUrl}}"
+      description: ""
+  body:
+    type: json
+    content: |-
+      {
+        "name": "<string>",
+        "species": "<string>",
+        "sex": "female",
+        "breed": "<string>",
+        "dateOfBirth": "2024-01-01",
+        "photo": "s"
+      }
+response:
+  statusCode: 500
+  statusText: Internal Server Error
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "type": "urn:my-pet-care:internal-error",
+        "title": "Internal Server Error",
+        "status": 500,
+        "detail": "The service failed to handle this request."
+      }
+order: 6000

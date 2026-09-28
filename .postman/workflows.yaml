@@ -1,0 +1,6 @@
+workflows:
+  syncSpecToCollection:
+    - spec: ../postman/specs/owner-pet-manager/openapi.yaml
+      collection: ../postman/collections/Owner & Pet Manager
+      options:
+        folderStrategy: Tags

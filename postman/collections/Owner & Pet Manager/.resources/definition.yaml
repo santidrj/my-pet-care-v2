@@ -1,0 +1,30 @@
+$kind: collection
+name: Owner & Pet Manager
+description: |
+  REST API for the Owner & Pet Manager service (ADR-0004).
+
+  Behavioral requirements: `docs/requirements/owner-pet-manager.md`.
+  HTTP route map: `docs/requirements/owner-pet-manager-api.md`.
+  OpenAPI: `postman/specs/owner-pet-manager/openapi.yaml`.
+
+  `DELETE` on Owner or Pet means Deactivation (soft), not a Hard delete.
+  `POST /owners` is public (ADR-0015); other routes require a Bearer JWT (ADR-0011).
+  Errors are RFC 9457 Problem Details (ADR-0010, ADR-0014).
+variables:
+  - key: baseUrl
+    value: '{{baseUrl}}'
+  - key: ownerAccessToken
+    value: '{{ownerAccessToken}}'
+  - key: platformAccessToken
+    value: '{{platformAccessToken}}'
+  - key: ownerId
+    value: '{{ownerId}}'
+  - key: petId
+    value: '{{petId}}'
+  - key: otherOwnerId
+    value: '{{otherOwnerId}}'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{ownerAccessToken}}'

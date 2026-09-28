@@ -1,0 +1,12 @@
+$kind: http-request
+description: OPM-FR-006. Pet's Owner or platform services. Other Owners use Get Pet Summary.
+url: '{{baseUrl}}/pets/:petId'
+method: GET
+headers:
+  - key: Accept
+    value: application/json
+pathVariables:
+  - key: petId
+    value: '{{petId}}'
+examples: './.resources/Get Pet.resources/examples'
+order: 2000

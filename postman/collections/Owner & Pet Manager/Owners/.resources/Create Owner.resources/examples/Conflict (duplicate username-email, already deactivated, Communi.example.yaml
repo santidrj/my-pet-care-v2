@@ -1,0 +1,37 @@
+$kind: http-example
+name: Conflict (duplicate username/email, already deactivated, Community-owner gate)
+request:
+  url: "{{baseUrl}}/owners"
+  method: POST
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: "Added as a part of security scheme: bearer"
+    - key: Accept
+      value: application/json
+  pathVariables:
+    baseUrl: "{{baseUrl}}"
+  body:
+    type: json
+    content: |-
+      {
+        "username": "0n",
+        "email": "4ZcwNitHiHFYd@OXabLTnFPNrRUsh.vezd",
+        "password": "stringstring",
+        "photo": "string"
+      }
+response:
+  statusCode: 409
+  statusText: Conflict
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "type": "string",
+        "title": "string",
+        "status": 6091,
+        "detail": "string"
+      }
+order: 3000

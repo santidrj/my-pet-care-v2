@@ -1,0 +1,20 @@
+$kind: http-request
+description: OPM-FR-007. Pet's Owner only.
+url: '{{baseUrl}}/pets/:petId'
+method: PATCH
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Accept
+    value: application/json
+pathVariables:
+  - key: petId
+    value: '{{petId}}'
+body:
+  type: json
+  content: |-
+    {
+      "name": "Nori"
+    }
+examples: './.resources/Update Pet.resources/examples'
+order: 3000

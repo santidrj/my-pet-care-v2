@@ -1,0 +1,3 @@
+$kind: collection
+description: Pet identity under an Owner, Pet summary, and ownership check
+order: 3000

@@ -1,0 +1,41 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/pets/:petId"
+  method: GET
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: "Added as a part of security scheme: bearer"
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: petId
+      value: <uuid>
+      disabled: false
+      description: "(Required) "
+    - key: baseUrl
+      value: "{{baseUrl}}"
+      description: ""
+  body:
+    type: text
+    content: ""
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "id": "5c24749f-2213-b499-d16e-0f67b3d9f9ee",
+        "ownerId": "d3b0cd3c-61b2-9759-6aff-810a57a70ab7",
+        "name": "string",
+        "species": "string",
+        "sex": "unknown",
+        "active": true,
+        "breed": "string",
+        "dateOfBirth": "2022-10-25",
+        "photo": "string"
+      }
+order: 1000

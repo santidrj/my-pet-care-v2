@@ -1,0 +1,49 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/owners/:ownerId/pets"
+  method: POST
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: "Added as a part of security scheme: bearer"
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: ownerId
+      value: <uuid>
+      disabled: false
+      description: "(Required) "
+    - key: baseUrl
+      value: "{{baseUrl}}"
+      description: ""
+  body:
+    type: json
+    content: |-
+      {
+        "name": "<string>",
+        "species": "<string>",
+        "sex": "male",
+        "breed": "<string>",
+        "dateOfBirth": "2024-01-01",
+        "photo": "string"
+      }
+response:
+  statusCode: 201
+  statusText: Created
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "id": "5c24749f-2213-b499-d16e-0f67b3d9f9ee",
+        "ownerId": "d3b0cd3c-61b2-9759-6aff-810a57a70ab7",
+        "name": "string",
+        "species": "string",
+        "sex": "unknown",
+        "active": true,
+        "breed": "string",
+        "dateOfBirth": "2022-10-25",
+        "photo": "string"
+      }
+order: 1000

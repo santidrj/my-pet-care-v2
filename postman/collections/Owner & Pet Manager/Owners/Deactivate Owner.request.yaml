@@ -1,0 +1,14 @@
+$kind: http-request
+description: |
+  OPM-FR-004. Soft Deactivation (not Hard delete). Community-owner gate;
+  deactivates active Pets first.
+url: '{{baseUrl}}/owners/:ownerId'
+method: DELETE
+headers:
+  - key: Accept
+    value: application/json
+pathVariables:
+  - key: ownerId
+    value: '{{ownerId}}'
+examples: './.resources/Deactivate Owner.resources/examples'
+order: 5000

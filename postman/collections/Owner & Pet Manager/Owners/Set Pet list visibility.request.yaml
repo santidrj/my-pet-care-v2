@@ -1,0 +1,20 @@
+$kind: http-request
+description: OPM-FR-011.
+url: '{{baseUrl}}/owners/:ownerId/pet-list-visibility'
+method: PUT
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Accept
+    value: application/json
+pathVariables:
+  - key: ownerId
+    value: '{{ownerId}}'
+body:
+  type: json
+  content: |-
+    {
+      "petListVisibility": "public"
+    }
+examples: './.resources/Set Pet list visibility.resources/examples'
+order: 6000

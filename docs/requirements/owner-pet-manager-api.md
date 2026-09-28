@@ -60,8 +60,15 @@ These routes are callable only with an Authentication Service platform claim. Ow
 | `GET` | `/pets/{petId}/summary` | Other Owner only | [OPM-FR-012](./owner-pet-manager.md#opm-fr-012--get-pet-summary) | `200` | Active Pet + Owner’s Pet list visibility **public**. Missing, deactivated, and private fail the same way. Pet’s Owner and platform services must not use this route. |
 | `GET` | `/pets/{petId}/owners/{ownerId}` | Platform | [OPM-FR-010](./owner-pet-manager.md#opm-fr-010--check-pet-ownership) | `200` | `{ "isOwner": true \| false }` when both exist; not-found when either id is missing. Answerable for deactivated Owners and Pets. |
 
+## Contract artifacts
+
+- OpenAPI 3.1: [`postman/specs/owner-pet-manager/openapi.yaml`](../../postman/specs/owner-pet-manager/openapi.yaml)
+- Postman collection (v3): [`postman/collections/Owner & Pet Manager/`](../../postman/collections/Owner%20&%20Pet%20Manager/)
+- Local environment: [`postman/environments/Owner & Pet Manager Local.environment.yaml`](../../postman/environments/Owner%20&%20Pet%20Manager%20Local.environment.yaml) (`baseUrl` defaults to `http://localhost:3001`)
+
+Import or open the local Postman project from this repo. Use the **Owner & Pet Manager Local** environment. Set `ownerAccessToken` / `platformAccessToken` when exercising authenticated routes. Do not push to a Postman cloud workspace unless explicitly requested.
+
 ## Out of scope for this API doc
 
-- Field-level JSON schemas, examples, and Problem Details `type` URNs per failure (OpenAPI / Postman next).
-- Liveness `GET /health` (process concern, not an OPM-FR).
+- Per-failure Problem Details `type` URNs beyond the skeleton not-found / internal-error pair (ADR-0014) — add domain URNs as handlers land.
 - TLS termination and token verification library details.

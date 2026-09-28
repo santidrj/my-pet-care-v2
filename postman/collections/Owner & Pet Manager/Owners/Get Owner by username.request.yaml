@@ -1,0 +1,12 @@
+$kind: http-request
+description: OPM-FR-002 username lookup.
+url: '{{baseUrl}}/owners'
+method: GET
+headers:
+  - key: Accept
+    value: application/json
+queryParams:
+  - key: username
+    value: ada_lovelace
+examples: './.resources/Get Owner by username.resources/examples'
+order: 2000

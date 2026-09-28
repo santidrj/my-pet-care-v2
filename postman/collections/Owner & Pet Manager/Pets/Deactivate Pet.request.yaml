@@ -1,0 +1,12 @@
+$kind: http-request
+description: OPM-FR-008. Soft Deactivation (not Hard delete).
+url: '{{baseUrl}}/pets/:petId'
+method: DELETE
+headers:
+  - key: Accept
+    value: application/json
+pathVariables:
+  - key: petId
+    value: '{{petId}}'
+examples: './.resources/Deactivate Pet.resources/examples'
+order: 4000

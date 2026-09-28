@@ -1,0 +1,19 @@
+$kind: http-request
+description: |
+  OPM-FR-009. Owner and platform services receive full Pet records.
+  Another Owner receives Pet summaries only when Pet list visibility is
+  public, and never deactivated Pets even with `status=all`.
+url: '{{baseUrl}}/owners/:ownerId/pets'
+method: GET
+headers:
+  - key: Accept
+    value: application/json
+pathVariables:
+  - key: ownerId
+    value: '{{ownerId}}'
+queryParams:
+  - key: status
+    value: active
+    description: active | all
+examples: './.resources/List Pets for Owner.resources/examples'
+order: 5000

@@ -1,0 +1,21 @@
+$kind: http-request
+description: OPM-FR-001. Public registration (ADR-0015); no Bearer JWT.
+url: '{{baseUrl}}/owners'
+method: POST
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Accept
+    value: application/json
+auth:
+  type: noauth
+body:
+  type: json
+  content: |-
+    {
+      "username": "ada_lovelace",
+      "email": "ada@example.com",
+      "password": "correct horse battery staple"
+    }
+examples: './.resources/Create Owner.resources/examples'
+order: 1000

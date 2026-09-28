@@ -1,0 +1,9 @@
+workspace:
+  id: local-only
+resourceNameMappings:
+  specs:
+    - ../postman/specs/owner-pet-manager/openapi.yaml: Owner & Pet Manager
+  collections:
+    - ../postman/collections/Owner & Pet Manager: Owner & Pet Manager
+  environments:
+    - ../postman/environments/Owner & Pet Manager Local.environment.yaml: Owner & Pet Manager Local

@@ -1,0 +1,15 @@
+$kind: http-request
+description: |
+  OPM-FR-012. Other Owners only. Succeeds only when the Pet is active and
+  its Owner's Pet list visibility is public. Missing, deactivated, and
+  private fail the same way.
+url: '{{baseUrl}}/pets/:petId/summary'
+method: GET
+headers:
+  - key: Accept
+    value: application/json
+pathVariables:
+  - key: petId
+    value: '{{petId}}'
+examples: './.resources/Get Pet Summary.resources/examples'
+order: 6000
