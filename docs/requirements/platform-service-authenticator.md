@@ -59,7 +59,7 @@ This document defines the requirements for the **platform-service authenticator*
 - The authenticator is a shared library used by Owner & Pet Manager, Pet Health Service, Activity Manager, and Authentication Service (and by the Community collaborator when it exists).
 - Access tokens are Bearer JWTs signed only by Authentication Service and verified with `jose` (ADR-0016, which supersedes ADR-0011).
 - Outbound cross-service calls stay synchronous (ADR-0002). The authenticator attaches the platform Bearer token on those calls.
-- Platform-token obtainment is OAuth2-style client credentials against Authentication Service. No mTLS in v1.
+- Platform-token obtainment is OAuth2-style client credentials against Authentication Service (`POST /oauth/token` as JSON; ADR-0017). No mTLS in v1.
 - Auth failures use Problem Details (ADR-0010 / ADR-0014). Tokens and secrets never appear in service logs (ADR-0013).
 
 ## Assumptions
