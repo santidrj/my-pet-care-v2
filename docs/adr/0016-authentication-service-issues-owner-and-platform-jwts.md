@@ -1,0 +1,13 @@
+---
+status: accepted
+---
+
+# Authentication Service issues Owner and platform-service Bearer JWTs
+
+Every call to **Owner & Pet Manager**, **Pet Health Service**, and **Activity Manager** carries a Bearer JWT, except resolution of an external Share link, **Create Owner** (`POST /owners` on Owner & Pet Manager; ADR-0015), and each service’s health/liveness probes. Each Fastify service verifies the signature with `jose` via the shared **platform-service authenticator**. The **Authentication Service** in this repo is the central issuer: it signs Owner access tokens and issues platform-service access tokens. This supersedes ADR-0011, which issued Owner tokens only and left platform-service tokens out of scope.
+
+The claims name the actor. An Owner call carries claim `ownerId` (that Owner’s id) and `aud` = `my-pet-care`. A platform call carries claim `service` naming which service is calling (`owner-pet-manager`, `pet-health-service`, `activity-manager`, `authentication-service`, or `community`) with `aud` = `my-pet-care:platform`. Owner and platform-service claim shapes are mutually exclusive on one JWT. Both token kinds carry `iss` = `my-pet-care:authentication-service`. Platform services obtain platform tokens from Authentication Service with a client-credentials grant (service id + secret) and present them on outbound synchronous calls; the authenticator verifies inbound tokens locally and caches outbound tokens until near expiry (`docs/requirements/platform-service-authenticator.md`). Platform-service access tokens expire in one hour. An external Share link stays a capability URL and does not use a JWT.
+
+We considered keeping each service as its own platform-token signer, and keeping a separate platform-token issuer beside Authentication Service. Per-service signing splits trust material and duplicates issuance. A second issuer adds key distribution without a v1 win once Authentication Service already signs Owner tokens. A raw owner-id or service-name header and mTLS stay rejected, as in ADR-0008 and ADR-0011: a header is spoofable, and mTLS is more machinery than v1 needs once the signature is checked.
+
+**Consequences.** A missing or invalid token fails the call. Services verify the signature locally and do not ask Authentication Service on each inbound call, so an access token already issued stays valid until it expires. Authentication Service must expose client-credentials for platform clients and protect service secrets. Owner & Pet Manager, Pet Health Service, and Activity Manager still do not implement Owner login. Password storage for Owner creation stays in Owner & Pet Manager.
