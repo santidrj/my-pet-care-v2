@@ -182,6 +182,10 @@ _Avoid_: identity provider, login service, account service
 The shared module each platform service uses to verify inbound Authentication Service Bearer JWTs and to obtain and present platform-service credentials on outbound calls. It establishes the actor; it does not enforce per-route authorization.
 _Avoid_: auth middleware, API gateway auth, identity provider
 
+**Trusted actor**:
+The verified caller identity the platform-service authenticator establishes for a request: either an Owner (by Owner id) or a platform service (by service id). Establishing the trusted actor is not authorization of the operation.
+_Avoid_: principal, subject, authenticated user
+
 **Species**:
 The Pet’s biological kind as stored by Owner & Pet Manager. Allowed values are `dog` and `cat`. Pet Health Service uses species for recommended daily kilocalories multipliers.
 _Avoid_: animal type, pet type
