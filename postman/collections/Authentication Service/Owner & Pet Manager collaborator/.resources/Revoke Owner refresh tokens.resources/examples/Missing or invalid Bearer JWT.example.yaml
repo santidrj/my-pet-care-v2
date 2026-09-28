@@ -1,0 +1,39 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/owners/:ownerId/token-revocations"
+  method: POST
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: "Added as a part of security scheme: bearer"
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: ownerId
+      value: <uuid>
+      disabled: false
+      description: "(Required) "
+    - key: baseUrl
+      value: "{{baseUrl}}"
+      description: ""
+  body:
+    type: json
+    content: |-
+      {
+        "reason": "<string>"
+      }
+response:
+  statusCode: 401
+  statusText: Unauthorized
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "type": "string",
+        "title": "string",
+        "status": 3866,
+        "detail": "string"
+      }
+order: 3000

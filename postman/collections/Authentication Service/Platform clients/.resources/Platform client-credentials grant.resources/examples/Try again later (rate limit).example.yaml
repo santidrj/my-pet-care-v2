@@ -1,0 +1,31 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/oauth/token"
+  method: POST
+  headers:
+    Accept: application/json
+  pathVariables:
+    baseUrl: "{{baseUrl}}"
+  body:
+    type: json
+    content: |-
+      {
+        "grantType": "<string>",
+        "serviceId": "authentication-service",
+        "secret": "<string>"
+      }
+response:
+  statusCode: 429
+  statusText: Too Many Requests
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "type": "string",
+        "title": "string",
+        "status": 3866,
+        "detail": "string"
+      }
+order: 4000

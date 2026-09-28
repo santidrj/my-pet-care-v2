@@ -1,0 +1,22 @@
+$kind: http-request
+description: |
+  AUTH-FR-001. Public. Identifier is a username or email (same parsing
+  rules as Owner & Pet Manager). Returns Owner access and refresh tokens.
+url: '{{baseUrl}}/auth/login'
+method: POST
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Accept
+    value: application/json
+auth:
+  type: noauth
+body:
+  type: json
+  content: |-
+    {
+      "identifier": "ada_lovelace",
+      "password": "correct horse battery staple"
+    }
+examples: './.resources/Login.resources/examples'
+order: 1000

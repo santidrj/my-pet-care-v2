@@ -1,0 +1,30 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/auth/login"
+  method: POST
+  headers:
+    Accept: application/json
+  pathVariables:
+    baseUrl: "{{baseUrl}}"
+  body:
+    type: json
+    content: |-
+      {
+        "identifier": "<string>",
+        "password": "<string>"
+      }
+response:
+  statusCode: 503
+  statusText: Service Unavailable
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "type": "string",
+        "title": "string",
+        "status": 3866,
+        "detail": "string"
+      }
+order: 6000

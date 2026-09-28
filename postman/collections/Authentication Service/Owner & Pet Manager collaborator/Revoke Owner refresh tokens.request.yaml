@@ -1,0 +1,24 @@
+$kind: http-request
+description: |
+  AUTH-FR-006. Owner & Pet Manager platform JWT only (`service` =
+  `owner-pet-manager`). Idempotent.
+url: '{{baseUrl}}/owners/{{ownerId}}/token-revocations'
+method: POST
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Accept
+    value: application/json
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{platformAccessToken}}'
+body:
+  type: json
+  content: |-
+    {
+      "reason": "passwordChange"
+    }
+examples: './.resources/Revoke Owner refresh tokens.resources/examples'
+order: 1000

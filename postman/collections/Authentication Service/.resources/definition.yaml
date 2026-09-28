@@ -1,0 +1,27 @@
+$kind: collection
+name: Authentication Service
+description: |
+  REST API for the Authentication Service (ADR-0004, ADR-0016, ADR-0017).
+
+  Behavioral requirements: `docs/requirements/authentication-service.md`.
+  HTTP route map: `docs/requirements/authentication-service-api.md`.
+  OpenAPI: `postman/specs/authentication-service/openapi.yaml`.
+
+  Owner session and client-credentials routes are public (no Bearer JWT).
+  Token revocations require an Owner & Pet Manager platform JWT.
+  Errors are RFC 9457 Problem Details (ADR-0010, ADR-0014).
+variables:
+  - key: baseUrl
+    value: '{{baseUrl}}'
+  - key: platformAccessToken
+    value: '{{platformAccessToken}}'
+  - key: refreshToken
+    value: '{{refreshToken}}'
+  - key: resetToken
+    value: '{{resetToken}}'
+  - key: ownerId
+    value: '{{ownerId}}'
+  - key: platformClientSecret
+    value: '{{platformClientSecret}}'
+auth:
+  type: noauth

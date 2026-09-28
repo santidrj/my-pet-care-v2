@@ -1,0 +1,21 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/auth/logout"
+  method: POST
+  pathVariables:
+    baseUrl: "{{baseUrl}}"
+  body:
+    type: json
+    content: |-
+      {
+        "refreshToken": "<string>"
+      }
+response:
+  statusCode: 204
+  statusText: No Content
+  headers:
+    Content-Type: text/plain
+  body:
+    type: text
+    content: ""
+order: 1000

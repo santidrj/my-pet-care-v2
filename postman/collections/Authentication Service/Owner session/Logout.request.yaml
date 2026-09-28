@@ -1,0 +1,21 @@
+$kind: http-request
+description: |
+  AUTH-FR-003. Public. Revokes the login for the presented refresh token.
+  Idempotent when the token is already unusable (`204`).
+url: '{{baseUrl}}/auth/logout'
+method: POST
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Accept
+    value: application/json
+auth:
+  type: noauth
+body:
+  type: json
+  content: |-
+    {
+      "refreshToken": "{{refreshToken}}"
+    }
+examples: './.resources/Logout.resources/examples'
+order: 3000

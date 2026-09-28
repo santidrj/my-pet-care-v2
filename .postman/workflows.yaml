@@ -4,3 +4,7 @@ workflows:
       collection: ../postman/collections/Owner & Pet Manager
       options:
         folderStrategy: Tags
+    - spec: ../postman/specs/authentication-service/openapi.yaml
+      collection: ../postman/collections/Authentication Service
+      options:
+        folderStrategy: Tags

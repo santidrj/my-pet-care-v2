@@ -1,0 +1,30 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/auth/password-reset/complete"
+  method: POST
+  headers:
+    Accept: application/json
+  pathVariables:
+    baseUrl: "{{baseUrl}}"
+  body:
+    type: json
+    content: |-
+      {
+        "resetToken": "<string>",
+        "password": "stringstring"
+      }
+response:
+  statusCode: 404
+  statusText: Not Found
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "type": "urn:my-pet-care:not-found",
+        "title": "Not Found",
+        "status": 404,
+        "detail": "No route matches this request."
+      }
+order: 3000

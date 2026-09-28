@@ -1,0 +1,21 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/auth/password-reset/request"
+  method: POST
+  pathVariables:
+    baseUrl: "{{baseUrl}}"
+  body:
+    type: json
+    content: |-
+      {
+        "email": "<email>"
+      }
+response:
+  statusCode: 202
+  statusText: Accepted
+  headers:
+    Content-Type: text/plain
+  body:
+    type: text
+    content: ""
+order: 1000

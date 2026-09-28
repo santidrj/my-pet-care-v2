@@ -1,0 +1,30 @@
+name: Authentication Service Local
+values:
+  - key: baseUrl
+    value: http://localhost:3004
+    enabled: true
+    description: Authentication Service base URL (local default port 3004)
+  - key: platformAccessToken
+    value: ''
+    enabled: true
+    type: secret
+    description: Owner & Pet Manager platform Bearer JWT for token-revocation notices
+  - key: refreshToken
+    value: ''
+    enabled: true
+    type: secret
+    description: Owner refresh token from login or refresh
+  - key: resetToken
+    value: ''
+    enabled: true
+    type: secret
+    description: Single-use password-reset token from the reset email link
+  - key: ownerId
+    value: ''
+    enabled: true
+    description: Owner UUID for token-revocation notices
+  - key: platformClientSecret
+    value: ''
+    enabled: true
+    type: secret
+    description: Platform client secret for POST /oauth/token

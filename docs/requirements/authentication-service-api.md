@@ -1,6 +1,6 @@
 # Authentication Service — HTTP API
 
-This document maps **Authentication Service** functional requirements to resource-oriented REST endpoints (ADR-0004). Behavioral acceptance criteria live in [`authentication-service.md`](./authentication-service.md). Request and response field schemas are deferred to OpenAPI / Postman work that follows.
+This document maps **Authentication Service** functional requirements to resource-oriented REST endpoints (ADR-0004). Behavioral acceptance criteria live in [`authentication-service.md`](./authentication-service.md). Request and response field schemas live in the OpenAPI / Postman contract artifacts below.
 
 ## Conventions
 
@@ -59,9 +59,16 @@ Logout with a well-formed body whose `refreshToken` is unknown, expired, or alre
 | ------ | ---- | ---- | ----------- | ------- | ----- |
 | `POST` | `/owners/{ownerId}/token-revocations` | Platform `owner-pet-manager` only | [AUTH-FR-006](./authentication-service.md#auth-fr-006--revoke-on-deactivation-or-password-change) | `204` | Body: `{ "reason": "deactivation" \| "passwordChange" }`. Idempotent. |
 
+## Contract artifacts
+
+- OpenAPI 3.1: [`postman/specs/authentication-service/openapi.yaml`](../../postman/specs/authentication-service/openapi.yaml)
+- Postman collection (v3): [`postman/collections/Authentication Service/`](../../postman/collections/Authentication%20Service/)
+- Local environment: [`postman/environments/Authentication Service Local.environment.yaml`](../../postman/environments/Authentication%20Service%20Local.environment.yaml) (`baseUrl` defaults to `http://localhost:3004`)
+
+Import or open the local Postman project from this repo. Use the **Authentication Service Local** environment. Set `platformAccessToken`, `refreshToken`, `resetToken`, `ownerId`, and `platformClientSecret` when exercising the corresponding routes. Do not push to a Postman cloud workspace unless explicitly requested.
+
 ## Out of scope for this API doc
 
 - Per-failure Problem Details `type` URNs beyond ADR-0014 skeleton pairs.
 - TLS termination and signing-key distribution details.
 - Public CRUD for platform client registry (deploy/ops seeding only).
-- Request/response field schemas (OpenAPI / Postman).

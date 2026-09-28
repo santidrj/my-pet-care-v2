@@ -1,0 +1,3 @@
+$kind: collection
+description: Refresh-token revocation notices from Owner & Pet Manager
+order: 3000

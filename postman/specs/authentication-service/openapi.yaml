@@ -1,0 +1,457 @@
+openapi: 3.1.0
+info:
+  title: Authentication Service
+  version: 0.1.0
+  description: |
+    REST API for the Authentication Service (ADR-0004, ADR-0016, ADR-0017).
+
+    Behavioral requirements: `docs/requirements/authentication-service.md`.
+    HTTP route map: `docs/requirements/authentication-service-api.md`.
+
+    Owner session and client-credentials routes are public (no Bearer JWT).
+    Token revocations require an Owner & Pet Manager platform JWT.
+    Errors use RFC 9457 Problem Details (ADR-0010, ADR-0014). At runtime the
+    error Content-Type is `application/problem+json`; this OpenAPI file
+    documents those bodies under `application/json` so Postman lint accepts
+    the media type.
+servers:
+  - url: '{baseUrl}'
+    description: Local or deployed Authentication Service base URL
+    variables:
+      baseUrl:
+        default: http://localhost:3004
+tags:
+  - name: Owner session
+    description: Login, refresh, logout, and forgotten-password reset
+  - name: Platform clients
+    description: Client-credentials grant for platform-service JWTs
+  - name: Owner & Pet Manager collaborator
+    description: Refresh-token revocation notices from Owner & Pet Manager
+  - name: Health
+    description: Process liveness (not an AUTH-FR)
+security: []
+paths:
+  /health:
+    get:
+      tags: [Health]
+      operationId: getHealth
+      summary: Liveness
+      security: []
+      responses:
+        '200':
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+  /auth/login:
+    post:
+      tags: [Owner session]
+      operationId: login
+      summary: Login
+      description: |
+        AUTH-FR-001. Public. Identifier is a username or email (same parsing
+        rules as Owner & Pet Manager). Returns Owner access and refresh tokens.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Tokens issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerTokenResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/UnauthorizedCredentials'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/refresh:
+    post:
+      tags: [Owner session]
+      operationId: refresh
+      summary: Refresh
+      description: |
+        AUTH-FR-002. Public. Exchanges a current refresh token for a new access
+        token and rotated refresh token.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Tokens rotated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerTokenResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/UnauthorizedCredentials'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/logout:
+    post:
+      tags: [Owner session]
+      operationId: logout
+      summary: Logout
+      description: |
+        AUTH-FR-003. Public. Revokes the login for the presented refresh token.
+        Idempotent when the token is already unusable (`204`).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '204':
+          description: Login revoked (or already unusable)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/password-reset/request:
+    post:
+      tags: [Owner session]
+      operationId: requestPasswordReset
+      summary: Request password reset
+      description: AUTH-FR-004. Public. Starts a forgotten-password reset for an active Owner email.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+      responses:
+        '202':
+          description: Reset accepted; message will be sent when applicable
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/password-reset/complete:
+    post:
+      tags: [Owner session]
+      operationId: completePasswordReset
+      summary: Complete password reset
+      description: |
+        AUTH-FR-005. Public. Sets a new password via a single-use reset token and
+        revokes that Owner’s refresh tokens.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetCompleteRequest'
+      responses:
+        '204':
+          description: Password updated; refresh tokens revoked
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /oauth/token:
+    post:
+      tags: [Platform clients]
+      operationId: clientCredentials
+      summary: Platform client-credentials grant
+      description: |
+        AUTH-FR-007 / ADR-0017. Public JSON body. Issues a platform-service
+        access token for the authenticated client’s own service id only.
+        `grantType` must be `client_credentials`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientCredentialsRequest'
+      responses:
+        '200':
+          description: Platform access token issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformTokenResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/UnauthorizedCredentials'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /owners/{ownerId}/token-revocations:
+    parameters:
+      - $ref: '#/components/parameters/OwnerId'
+    post:
+      tags: [Owner & Pet Manager collaborator]
+      operationId: revokeOwnerTokens
+      summary: Revoke Owner refresh tokens
+      description: |
+        AUTH-FR-006. Owner & Pet Manager platform JWT only (`service` =
+        `owner-pet-manager`). Idempotent.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRevocationRequest'
+      responses:
+        '204':
+          description: Refresh tokens revoked (or none remained)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Platform JWT from Authentication Service with claim `service` =
+        `owner-pet-manager` for token-revocation notices. Owner JWTs must not
+        call this route.
+  parameters:
+    OwnerId:
+      name: ownerId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+  responses:
+    BadRequest:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    Unauthorized:
+      description: Missing or invalid Bearer JWT
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    UnauthorizedCredentials:
+      description: Credentials or refresh token not accepted
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    Forbidden:
+      description: Caller is not allowed for this operation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    NotFound:
+      description: Resource not found (or indistinguishable reset failure)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            routeNotFound:
+              summary: No matching route (skeleton)
+              value:
+                type: urn:my-pet-care:not-found
+                title: Not Found
+                status: 404
+                detail: No route matches this request.
+    TooManyRequests:
+      description: Try again later (rate limit)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    ServiceUnavailable:
+      description: Dependency unavailable (Owner & Pet Manager or mail delivery)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    InternalError:
+      description: Unexpected failure
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            internal:
+              value:
+                type: urn:my-pet-care:internal-error
+                title: Internal Server Error
+                status: 500
+                detail: The service failed to handle this request.
+  schemas:
+    Uuid:
+      type: string
+      format: uuid
+    Password:
+      type: string
+      minLength: 8
+      maxLength: 128
+      description: |
+        At least 8 characters; service allows at least 64 (documented max 128).
+        Any character including spaces. Commonly used or known-breached passwords
+        are rejected on reset complete via Owner & Pet Manager (ADR-0012).
+    PlatformServiceId:
+      type: string
+      enum:
+        - owner-pet-manager
+        - pet-health-service
+        - activity-manager
+        - authentication-service
+        - community
+    HealthStatus:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          const: ok
+    ProblemDetails:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, detail]
+      properties:
+        type:
+          type: string
+          description: Stable URN (ADR-0014)
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [identifier, password]
+      properties:
+        identifier:
+          type: string
+          minLength: 1
+          description: Username or email (Auth identifier parsing rules).
+        password:
+          type: string
+          minLength: 1
+    RefreshTokenRequest:
+      type: object
+      additionalProperties: false
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+          minLength: 1
+    PasswordResetRequest:
+      type: object
+      additionalProperties: false
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+    PasswordResetCompleteRequest:
+      type: object
+      additionalProperties: false
+      required: [resetToken, password]
+      properties:
+        resetToken:
+          type: string
+          minLength: 1
+        password:
+          $ref: '#/components/schemas/Password'
+    ClientCredentialsRequest:
+      type: object
+      additionalProperties: false
+      required: [grantType, serviceId, secret]
+      properties:
+        grantType:
+          type: string
+          const: client_credentials
+        serviceId:
+          $ref: '#/components/schemas/PlatformServiceId'
+        secret:
+          type: string
+          minLength: 1
+    TokenRevocationRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          enum: [deactivation, passwordChange]
+    OwnerTokenResponse:
+      type: object
+      additionalProperties: false
+      required: [accessToken, tokenType, expiresIn, refreshToken]
+      properties:
+        accessToken:
+          type: string
+          minLength: 1
+        tokenType:
+          type: string
+          const: Bearer
+        expiresIn:
+          type: integer
+          minimum: 1
+          description: Access token lifetime in seconds (900 for Owner tokens).
+        refreshToken:
+          type: string
+          minLength: 1
+    PlatformTokenResponse:
+      type: object
+      additionalProperties: false
+      required: [accessToken, tokenType, expiresIn]
+      properties:
+        accessToken:
+          type: string
+          minLength: 1
+        tokenType:
+          type: string
+          const: Bearer
+        expiresIn:
+          type: integer
+          minimum: 1
+          description: Access token lifetime in seconds (3600 for platform tokens).
