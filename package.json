@@ -1,0 +1,14 @@
+{
+  "name": "my-pet-care",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.6.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @my-pet-care/contracts build && pnpm --parallel --filter \"./services/*\" dev",
+    "build": "pnpm --filter @my-pet-care/contracts build && pnpm --filter \"./services/*\" build",
+    "typecheck": "pnpm --filter @my-pet-care/contracts typecheck && pnpm --filter @my-pet-care/contracts build && pnpm --filter \"./services/*\" typecheck"
+  }
+}
