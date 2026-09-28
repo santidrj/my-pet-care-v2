@@ -29,6 +29,7 @@ flowchart TB
   community["Community collaborator"]
 
   clients -->|"login, refresh, logout, reset, Owner JWT"| authSvc
+  clients -->|"Create Owner (no JWT)"| opmSvc
   clients -->|"Owner Bearer JWT"| opmSvc
   clients -->|"Owner Bearer JWT"| phsSvc
   clients -->|"Owner Bearer JWT"| amSvc
@@ -40,6 +41,6 @@ flowchart TB
   opmSvc -->|"revoke refresh tokens + platform JWT"| authSvc
   amSvc -->|"latest weight + platform JWT"| phsSvc
   amSvc -->|"activity-duration Health metric + platform JWT"| phsSvc
-  opmSvc -->|"Community-owner check; end belonging notify"| community
-  amSvc -->|"Forum or Group activity Share"| community
+  opmSvc -->|"Community-owner check; end belonging notify + platform JWT"| community
+  amSvc -->|"Forum or Group activity Share + platform JWT"| community
   phsSvc & amSvc & opmSvc & authSvc -->|"client-credentials (platform JWT)"| authSvc

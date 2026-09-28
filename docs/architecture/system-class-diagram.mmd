@@ -150,6 +150,15 @@ classDiagram
             +expiresAt
             +used
         }
+        class PlatformClient {
+            +serviceId
+            +secretHash
+            +active
+        }
+        class ClientCredentialsGrant {
+            <<service>>
+            +issuePlatformAccessToken()
+        }
     }
 
     Owner "1" --> "*" Pet : manages
@@ -176,7 +185,9 @@ classDiagram
     Owner ..> Login : ownerId
     Login "1" --> "*" RefreshToken : rotation
     Owner ..> PasswordReset : ownerId
+    ClientCredentialsGrant --> PlatformClient : authenticates against registry
 
     note for MedicalRecord "Vet visits and Medications together"
     note for Share "Audience: Owner, Forum, Group activity, or external link"
     note for Login "Access token is issued and not stored"
+    note for ClientCredentialsGrant "Platform access token is issued and not stored"

@@ -1,34 +1,38 @@
-flowchart TB
-  owner["Owner"]
-  opm["Owner & Pet Manager"]
-  am["Activity Manager"]
+C4Component
+    title Component diagram for Pet Health Service
 
-  subgraph phs ["Pet Health Service"]
-    profile["Health profile"]
-    meals["Meals"]
-    washes["Washes"]
-    medical["Medical record"]
-    metrics["Health metrics"]
-    store[("Health store")]
+    Person(owner, "Owner", "Owner Bearer JWT")
+    System_Ext(opm, "Owner & Pet Manager", "Ownership, species, and Pet status")
+    System_Ext(am, "Activity Manager", "Latest-weight reads and activity-duration writes")
 
-    profile --> metrics
-    meals --> metrics
-    profile --> store
-    meals --> store
-    washes --> store
-    medical --> store
-    metrics --> store
-  end
+    Container_Boundary(phs, "Pet Health Service") {
+        Component(profile, "Health profile", "Owner-facing and service-facing", "Latest weight and recommended daily kilocalories")
+        Component(metrics, "Health metrics", "Owner-facing and service-facing", "Weight, calories consumed, and activity duration history")
+        Component(meals, "Meals", "Owner-facing", "Meal lifecycle and calories-consumed metric writes")
+        Component(washes, "Washes and Wash schedule", "Owner-facing", "Wash lifecycle, recurring schedule, and next due")
+        Component(medical, "Medical record", "Owner-facing", "Vet visits and Medications")
+        ComponentDb(store, "Health store", "System of record", "Profiles, metrics, Meals, Washes, schedules, Vet visits, and Medications")
 
-  owner --> profile
-  owner --> meals
-  owner --> washes
-  owner --> medical
-  owner --> metrics
-  profile -->|"ownership, species, status"| opm
-  meals -->|"ownership and status"| opm
-  washes -->|"ownership and status"| opm
-  medical -->|"ownership and status"| opm
-  metrics -->|"ownership and status"| opm
-  am -->|"activity-duration sync"| metrics
-  am -->|"latest weight"| profile
+        Rel(profile, metrics, "Derives latest weight")
+        Rel(meals, metrics, "Creates, corrects, and deletes calories-consumed metrics")
+        Rel(profile, store, "Reads and writes")
+        Rel(metrics, store, "Reads and writes")
+        Rel(meals, store, "Reads and writes")
+        Rel(washes, store, "Reads and writes")
+        Rel(medical, store, "Reads and writes")
+    }
+
+    Rel(owner, profile, "Profile + Owner JWT")
+    Rel(owner, metrics, "Metrics + Owner JWT")
+    Rel(owner, meals, "Meals + Owner JWT")
+    Rel(owner, washes, "Washes + Owner JWT")
+    Rel(owner, medical, "Medical record + Owner JWT")
+    Rel(profile, opm, "Identity/status + pet-health-service JWT", "synchronous")
+    Rel(metrics, opm, "Identity/status + pet-health-service JWT", "synchronous")
+    Rel(meals, opm, "Identity/status + pet-health-service JWT", "synchronous")
+    Rel(washes, opm, "Identity/status + pet-health-service JWT", "synchronous")
+    Rel(medical, opm, "Identity/status + pet-health-service JWT", "synchronous")
+    Rel(am, profile, "Latest weight + activity-manager JWT", "synchronous")
+    Rel(am, metrics, "Activity-duration sync + activity-manager JWT", "synchronous")
+
+    UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

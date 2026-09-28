@@ -1,0 +1,29 @@
+C4Component
+    title Shared platform-service authenticator
+
+    Person(owner, "Owner", "Presents an Owner Bearer JWT")
+    System_Ext(platformCaller, "Platform service caller", "Presents a platform-service Bearer JWT")
+    System_Ext(publicCaller, "Public caller", "Uses an explicitly allowlisted route")
+    System_Ext(auth, "Authentication Service", "Issues Owner and platform-service JWTs")
+    System_Ext(peer, "Peer platform service", "Receives an authenticated synchronous call")
+
+    Container_Boundary(service, "Each platform service: Owner & Pet Manager, Pet Health Service, Activity Manager, Authentication Service; Community later") {
+        Component(publicRoutes, "Public route allowlist", "Route gate", "Create Owner, Auth session/reset and token grant, external Share, health/liveness; revoke notices excluded")
+        Component(verifier, "Inbound JWT verifier", "jose", "Verifies signature, issuer, audience, expiry, and exactly one Owner or service actor")
+        Component(handler, "Service handler", "Application", "Receives a trusted actor; applies per-route authorization")
+        Component(outbound, "Outbound credential provider", "Client credentials", "Obtains and presents this service's platform JWT; fails closed if unavailable")
+        ComponentDb(cache, "Platform-token cache", "In memory", "Reuses a token until near expiry; one re-fetch and retry after an expiry-related 401")
+
+        Rel(publicRoutes, handler, "Bypasses JWT verification")
+        Rel(verifier, handler, "Owner id or calling service")
+        Rel(handler, outbound, "Makes a synchronous platform call")
+        Rel(outbound, cache, "Reads and refreshes")
+    }
+
+    Rel(publicCaller, publicRoutes, "Calls an allowlisted route without a JWT")
+    Rel(owner, verifier, "ownerId, aud my-pet-care")
+    Rel(platformCaller, verifier, "service, aud my-pet-care:platform")
+    Rel(outbound, auth, "Client credentials for a one-hour platform JWT")
+    Rel(outbound, peer, "Authorization: Bearer platform JWT")
+
+    UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

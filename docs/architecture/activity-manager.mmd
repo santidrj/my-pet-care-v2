@@ -2,6 +2,7 @@ C4Component
     title Component diagram for Activity Manager
 
     Person(owner, "Owner", "Owner Bearer JWT")
+    Person(recipientOwner, "Recipient Owner", "Owner JWT")
     Person(linkHolder, "External link holder", "Capability URL, no JWT")
     System_Ext(opm, "Owner & Pet Manager", "Ownership, Pet status, Pet name")
     System_Ext(phs, "Pet Health Service", "Latest weight and activity-duration")
@@ -23,10 +24,11 @@ C4Component
     Rel(owner, types, "Custom types")
     Rel(owner, activities, "Registers Activities")
     Rel(owner, shares, "Creates and revokes")
+    Rel(recipientOwner, shares, "Resolves an Owner-addressed Share")
     Rel(linkHolder, shares, "Resolves external Share")
-    Rel(activities, opm, "Ownership and status", "synchronous")
-    Rel(shares, opm, "Pet name for snapshot", "synchronous")
-    Rel(activities, phs, "Weight and duration", "synchronous")
-    Rel(shares, community, "Forum or Group activity Share", "synchronous")
+    Rel(activities, opm, "Identity/status + activity-manager JWT", "synchronous")
+    Rel(shares, opm, "Pet name + activity-manager JWT", "synchronous")
+    Rel(activities, phs, "Weight/duration + activity-manager JWT", "synchronous")
+    Rel(shares, community, "Community Share + activity-manager JWT", "synchronous")
 
     UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

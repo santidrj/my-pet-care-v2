@@ -12,7 +12,7 @@ C4Component
         Component(reset, "Password reset", "Owner-facing", "Single-use link and new password")
         Component(platformGrant, "Client-credentials", "Service-facing", "Issues platform JWT")
         Component(revocation, "Revocation", "Service-facing", "Deactivation and password change")
-        ComponentDb(store, "Login store", "System of record", "Refresh tokens, reset links, rate limits, platform clients")
+        ComponentDb(store, "Login and platform-client store", "System of record", "Refresh tokens, reset links, rate limits, platform clients")
 
         Rel(login, store, "Reads and writes")
         Rel(session, store, "Reads and writes")
@@ -21,14 +21,14 @@ C4Component
         Rel(revocation, store, "Revokes refresh tokens")
     }
 
-    Rel(owner, login, "Signs in")
-    Rel(owner, session, "Refreshes and logs out")
-    Rel(owner, reset, "Resets a forgotten password")
-    Rel(platform, platformGrant, "Service id and secret")
-    Rel(login, opm, "Hash and active status", "synchronous")
-    Rel(session, opm, "Hash and active status", "synchronous")
-    Rel(reset, opm, "Status and new password", "synchronous")
+    Rel(owner, login, "Signs in (public)")
+    Rel(owner, session, "Refreshes or logs out (public)")
+    Rel(owner, reset, "Resets password (public)")
+    Rel(platform, platformGrant, "Client credentials (public)")
+    Rel(login, opm, "Hash/status + authentication-service JWT", "synchronous")
+    Rel(session, opm, "Hash/status + authentication-service JWT", "synchronous")
+    Rel(reset, opm, "Status/password + authentication-service JWT", "synchronous")
     Rel(reset, mail, "Sends the reset link")
-    Rel(opm, revocation, "Deactivation and password change", "synchronous")
+    Rel(opm, revocation, "Revoke notice + owner-pet-manager JWT", "synchronous")
 
     UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
