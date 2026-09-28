@@ -17,11 +17,11 @@ export function isAnyOwner(actor: Actor | null): boolean {
 }
 
 export function isPlatformService(actor: Actor | null): boolean {
-  return actor?.kind === "service";
+  return actor?.kind === "platform";
 }
 
 export function isAuthService(actor: Actor | null): boolean {
-  return actor?.kind === "service" && actor.service === "authentication-service";
+  return actor?.kind === "platform" && actor.service === "authentication-service";
 }
 
 export function isOwnerOrPlatform(actor: Actor | null): boolean {

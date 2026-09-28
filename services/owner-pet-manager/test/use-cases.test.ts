@@ -33,7 +33,7 @@ function ownerActor(ownerId: string): Actor {
   return { kind: "owner", ownerId };
 }
 
-function serviceActor(
+function platformActor(
   service:
     | "authentication-service"
     | "pet-health-service"
@@ -41,7 +41,7 @@ function serviceActor(
     | "activity-manager"
     | "community",
 ): Actor {
-  return { kind: "service", service };
+  return { kind: "platform", service };
 }
 
 function createFakeCommunity(
@@ -186,7 +186,7 @@ describe("getOwner visibility", () => {
 
     const platform = await getOwnerById(
       deps,
-      serviceActor("pet-health-service"),
+      platformActor("pet-health-service"),
       ownerId,
     );
     assert.equal(platform.ok, true);
@@ -359,7 +359,7 @@ describe("pets and visibility", () => {
 
     const platform = await getPet(
       deps,
-      serviceActor("pet-health-service"),
+      platformActor("pet-health-service"),
       pet.value.id as string,
     );
     assert.equal(platform.ok, true);
@@ -506,7 +506,7 @@ describe("credentials authz", () => {
 
     const okId = await getCredentialsByIdentifier(
       deps,
-      serviceActor("authentication-service"),
+      platformActor("authentication-service"),
       "alice",
     );
     assert.equal(okId.ok, true);
@@ -518,14 +518,14 @@ describe("credentials authz", () => {
 
     const byOwner = await getCredentialsByOwnerId(
       deps,
-      serviceActor("authentication-service"),
+      platformActor("authentication-service"),
       created.value.id,
     );
     assert.equal(byOwner.ok, true);
 
     const set = await setPasswordFromAuth(
       deps,
-      serviceActor("authentication-service"),
+      platformActor("authentication-service"),
       created.value.id,
       "another-unique-pass-42",
     );
@@ -557,7 +557,7 @@ describe("checkPetOwnership", () => {
 
     const yes = await checkPetOwnership(
       deps,
-      serviceActor("activity-manager"),
+      platformActor("activity-manager"),
       pet.value.id as string,
       created.value.id,
     );
@@ -568,7 +568,7 @@ describe("checkPetOwnership", () => {
 
     const no = await checkPetOwnership(
       deps,
-      serviceActor("activity-manager"),
+      platformActor("activity-manager"),
       pet.value.id as string,
       "id-9999",
     );

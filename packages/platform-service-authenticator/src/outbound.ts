@@ -1,7 +1,10 @@
 import type { PlatformServiceId } from "./verify-token.js";
 
 /** Default refresh-before-expiry margin; larger than verification leeway (±60s). */
-export const DEFAULT_SKEW_MARGIN_SECONDS = 120 as const;
+export const DEFAULT_SKEW_MARGIN_SECONDS = 300 as const;
+
+/** Default timeout for Authentication Service client-credentials grant. */
+export const DEFAULT_GRANT_TIMEOUT_MS = 5_000 as const;
 
 export type OutboundCredentialProviderOptions = {
   tokenEndpoint: string;
@@ -9,6 +12,7 @@ export type OutboundCredentialProviderOptions = {
   secret: string;
   fetch?: typeof globalThis.fetch;
   skewMarginSeconds?: number;
+  grantTimeoutMs?: number;
   now?: () => Date;
 };
 
@@ -64,24 +68,32 @@ export function createOutboundCredentialProvider(
   const fetchImpl = options.fetch ?? globalThis.fetch;
   const skewMarginSeconds =
     options.skewMarginSeconds ?? DEFAULT_SKEW_MARGIN_SECONDS;
+  const grantTimeoutMs =
+    options.grantTimeoutMs ?? DEFAULT_GRANT_TIMEOUT_MS;
   const now = options.now ?? (() => new Date());
 
   let cache: CachedToken | undefined;
   let inflight: Promise<string> | undefined;
 
   async function obtainToken(): Promise<string> {
-    const response = await fetchImpl(options.tokenEndpoint, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        accept: "application/json",
-      },
-      body: JSON.stringify({
-        grantType: "client_credentials",
-        serviceId: options.serviceId,
-        secret: options.secret,
-      }),
-    });
+    let response: Response;
+    try {
+      response = await fetchImpl(options.tokenEndpoint, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json",
+        },
+        body: JSON.stringify({
+          grantType: "client_credentials",
+          serviceId: options.serviceId,
+          secret: options.secret,
+        }),
+        signal: AbortSignal.timeout(grantTimeoutMs),
+      });
+    } catch {
+      throw new PlatformTokenUnavailableError();
+    }
 
     if (!response.ok) {
       throw new PlatformTokenUnavailableError();
@@ -113,8 +125,20 @@ export function createOutboundCredentialProvider(
       return cache.accessToken;
     }
 
-    if (inflight !== undefined && !forceRefresh) {
-      return inflight;
+    if (inflight !== undefined) {
+      if (!forceRefresh) {
+        return inflight;
+      }
+      try {
+        await inflight;
+      } catch {
+        // Prior grant failed; continue with a forced re-fetch.
+      }
+      cache = undefined;
+      // Another forced refresh may have started while we waited.
+      if (inflight !== undefined) {
+        return inflight;
+      }
     }
 
     const request = obtainToken().finally(() => {

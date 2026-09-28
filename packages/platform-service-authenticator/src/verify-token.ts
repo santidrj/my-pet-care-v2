@@ -17,7 +17,10 @@ export type PlatformServiceId = (typeof PLATFORM_SERVICE_IDS)[number];
 
 export type Actor =
   | { kind: "owner"; ownerId: string }
-  | { kind: "service"; service: PlatformServiceId };
+  | { kind: "platform"; service: PlatformServiceId };
+
+/** Alias matching the HTTP contract vocabulary. */
+export type TrustedActor = Actor;
 
 export type VerifyTokenOptions = {
   publicKey: CryptoKey | Uint8Array;
@@ -69,7 +72,7 @@ function extractActor(payload: JWTPayload): Actor {
   if (!audienceIncludes(payload.aud, PLATFORM_AUDIENCE)) {
     throw new TokenVerificationError();
   }
-  return { kind: "service", service: payload.service };
+  return { kind: "platform", service: payload.service };
 }
 
 export async function verifyToken(

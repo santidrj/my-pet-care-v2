@@ -8,6 +8,7 @@ export {
   PLATFORM_SERVICE_IDS,
   type Actor,
   type PlatformServiceId,
+  type TrustedActor,
   type VerifyTokenOptions,
 } from "./verify-token.js";
 
@@ -15,6 +16,7 @@ export {
   createOutboundCredentialProvider,
   PlatformTokenUnavailableError,
   DEFAULT_SKEW_MARGIN_SECONDS,
+  DEFAULT_GRANT_TIMEOUT_MS,
   type OutboundCredentialProvider,
   type OutboundCredentialProviderOptions,
 } from "./outbound.js";

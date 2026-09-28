@@ -50,7 +50,7 @@ describe("verifyToken", () => {
     assert.deepEqual(actor, { kind: "owner", ownerId: "owner-123" });
   });
 
-  it("returns a service actor for a valid platform-service JWT", async () => {
+  it("returns a platform actor for a valid platform-service JWT", async () => {
     const token = await sign(
       { service: "owner-pet-manager" },
       { aud: PLATFORM_AUD },
@@ -59,7 +59,7 @@ describe("verifyToken", () => {
     const actor = await verifyToken(token, { publicKey });
 
     assert.deepEqual(actor, {
-      kind: "service",
+      kind: "platform",
       service: "owner-pet-manager",
     });
   });
