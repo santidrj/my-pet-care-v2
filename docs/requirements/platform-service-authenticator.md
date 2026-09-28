@@ -46,8 +46,9 @@ This document defines the requirements for the **platform-service authenticator*
 - Only Authentication Service may issue Owner and platform-service access tokens.
 - A platform client may receive a token only for its own configured service id. It must not obtain a token that names another platform service.
 - Platform client secrets are known only to that service and Authentication Service. They are never exposed to Owners or public clients.
-- Owner id and platform-service claims are mutually exclusive on one JWT. An accepted token has exactly one actor shape.
-- Platform-service JWT claims name exactly one calling service among: `owner-pet-manager`, `pet-health-service`, `activity-manager`, `authentication-service`, `community`.
+- Owner id (`ownerId`) and platform-service (`service`) claims are mutually exclusive on one JWT. An accepted token has exactly one actor shape.
+- Owner JWTs must carry `ownerId`, `aud` = `my-pet-care`, and `iss` = `my-pet-care:authentication-service`. Platform-service JWTs must carry `service` (exactly one of `owner-pet-manager`, `pet-health-service`, `activity-manager`, `authentication-service`, `community`), `aud` = `my-pet-care:platform`, and the same `iss`.
+- Platform-service JWT claim `service` names exactly one calling service among the allowed ids above.
 - There is no refresh token for platform credentials. The authenticator re-requests from Authentication Service when the cached token is expired or near expiry.
 - Cached outbound platform tokens are refreshed before expiry (with a skew margin). A peer 401 attributable to expiry triggers one re-fetch and one retry.
 - Public allowlisted routes never require a JWT. All other routes fail closed.
@@ -56,11 +57,10 @@ This document defines the requirements for the **platform-service authenticator*
 ## Constraints
 
 - The authenticator is a shared library used by Owner & Pet Manager, Pet Health Service, Activity Manager, and Authentication Service (and by the Community collaborator when it exists).
-- Access tokens are Bearer JWTs signed only by Authentication Service and verified with `jose`, extending the direction of ADR-0011 (which previously excluded platform-service tokens).
+- Access tokens are Bearer JWTs signed only by Authentication Service and verified with `jose` (ADR-0016, which supersedes ADR-0011).
 - Outbound cross-service calls stay synchronous (ADR-0002). The authenticator attaches the platform Bearer token on those calls.
 - Platform-token obtainment is OAuth2-style client credentials against Authentication Service. No mTLS in v1.
 - Auth failures use Problem Details (ADR-0010 / ADR-0014). Tokens and secrets never appear in service logs (ADR-0013).
-- These requirements reopen ADR-0011 and `docs/requirements/authentication-service.md`: Authentication Service **does** issue platform-service tokens.
 
 ## Assumptions
 
@@ -78,10 +78,10 @@ This document defines the requirements for the **platform-service authenticator*
 
 **Acceptance criteria:**
 
-1. A valid Owner JWT yields a trusted actor that is that Owner’s id.
-2. A valid platform-service JWT yields a trusted actor that is that calling service’s id among the allowed claim names.
-3. A missing, invalid, forged, or expired JWT fails the request with an unauthorized Problem Details response. The body does not leak which check failed beyond the uniform unauthorized shape.
-4. A JWT that carries both Owner and platform-service actor shapes, or neither, is rejected.
+1. A valid Owner JWT (`iss` = `my-pet-care:authentication-service`, `aud` = `my-pet-care`, claim `ownerId`, no `service`) yields a trusted actor that is that Owner’s id.
+2. A valid platform-service JWT (`iss` = `my-pet-care:authentication-service`, `aud` = `my-pet-care:platform`, claim `service` set to exactly one allowed service id, no `ownerId`) yields a trusted actor that is that calling service’s id.
+3. A missing, invalid, forged, expired, or wrong-`aud`/`iss` JWT fails the request with an unauthorized Problem Details response. The body does not leak which check failed beyond the uniform unauthorized shape.
+4. A JWT that carries both `ownerId` and `service`, or neither, is rejected.
 5. Verification uses local signature checking with Authentication Service trust material. It does not call Authentication Service per request.
 
 ### PSA-FR-002 — Present outbound platform credential
@@ -102,7 +102,7 @@ This document defines the requirements for the **platform-service authenticator*
 
 **Acceptance criteria:**
 
-1. Allowlisted public routes succeed without a JWT (including Create Owner, Authentication Service login/refresh/logout/reset, external Share link resolution, and health/liveness routes already treated as public).
+1. Allowlisted public routes succeed without a JWT (including Create Owner, Authentication Service login/refresh/logout/reset, Authentication Service client-credentials `POST /oauth/token`, external Share link resolution, and health/liveness routes). Authentication Service revoke notices are **not** allowlisted — they require an `owner-pet-manager` platform JWT.
 2. A non-allowlisted route without a JWT fails closed (unauthorized).
 
 ### PSA-FR-004 — Fail closed when platform token unavailable
@@ -129,9 +129,9 @@ This document defines the requirements for the **platform-service authenticator*
 
 **Acceptance criteria:**
 
-1. A successful client-credentials grant returns a Bearer JWT access token that expires in **1 hour (3600 seconds)** and names exactly one platform service.
-2. A client may obtain a token only for its own configured service id.
-3. Owner access tokens remain as defined by Authentication Service requirements (15-minute access tokens); platform tokens do not use a refresh token.
+1. A successful client-credentials grant returns a Bearer JWT access token that expires in **1 hour (3600 seconds)**, with `iss` = `my-pet-care:authentication-service`, `aud` = `my-pet-care:platform`, claim `service` naming exactly one platform service, and `expires_in` in the response.
+2. A client may obtain a token only for its own configured service id. Validation errors, rejected credentials, disabled/unknown clients, and try-again-later (AUTH-NFR-005) fail the obtainment path; the authenticator does not present a token from a failed grant.
+3. Owner access tokens remain as defined by Authentication Service requirements (15-minute access tokens, `ownerId`, `aud` = `my-pet-care`); platform tokens do not use a refresh token.
 
 ## Quality attributes (NFRs)
 
