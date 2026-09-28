@@ -2,6 +2,8 @@
 
 Backend for My Pet Care. This workspace is the runnable skeleton: four Fastify services and a shared contracts package.
 
+How to work in this repo is in the [Maintainer guide](docs/maintainer-guide.md).
+
 ## Requirements
 
 - Node.js 24
