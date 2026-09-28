@@ -1,46 +1,39 @@
-flowchart TB
-  clients["Clients"]
-  linkHolder["External link holder"]
+architecture-beta
+    group opm(cloud)[Owner & Pet Manager]
+    group phs(cloud)[Pet Health Service]
+    group activity(cloud)[Activity Manager]
+    group auth(cloud)[Authentication Service]
 
-  subgraph opm ["Owner & Pet Manager"]
-    opmSvc["Owner, Pet, Deactivation, Pet list visibility"]
-    opmDb[("Owner and Pet store")]
-    opmSvc --> opmDb
-  end
+    service community(internet)[Community collaborator]
 
-  subgraph phs ["Pet Health Service"]
-    phsSvc["Health profile, Health metrics, Meals, Washes, Medical record"]
-    phsDb[("Health store")]
-    phsSvc --> phsDb
-  end
+    service opmApi(server)[Owner and Pet API] in opm
+    service opmDb(database)[Owner and Pet store] in opm
+    service phsApi(server)[Pet Health API] in phs
+    service phsDb(database)[Health store] in phs
+    service activityApi(server)[Activity and Share API] in activity
+    service activityDb(database)[Activity store] in activity
+    service authApi(server)[Owner and platform token API] in auth
+    service authDb(database)[Login and platform-client store] in auth
 
-  subgraph am ["Activity Manager"]
-    amSvc["Activity types, Activities, Shares"]
-    amDb[("Activity store")]
-    amSvc --> amDb
-  end
+    %% Each backend service owns its datastore.
+    opmApi:B --> T:opmDb
+    phsApi:B --> T:phsDb
+    activityApi:B --> T:activityDb
+    authApi:B --> T:authDb
 
-  subgraph auth ["Authentication Service"]
-    authSvc["Owner tokens, platform client-credentials, reset, revoke"]
-    authDb[("Login and platform-client store")]
-    authSvc --> authDb
-  end
+    %% Synchronous platform-JWT calls for identity, status, and credentials.
+    phsApi{group}:L --> R:opmApi{group}
+    activityApi{group}:L --> R:opmApi{group}
+    authApi{group}:L --> R:opmApi{group}
 
-  community["Community collaborator"]
+    %% Revocation and client-credentials calls to Authentication Service.
+    opmApi{group}:R --> L:authApi{group}
+    phsApi{group}:R --> L:authApi{group}
+    activityApi{group}:R --> L:authApi{group}
 
-  clients -->|"login, refresh, logout, reset, Owner JWT"| authSvc
-  clients -->|"Create Owner (no JWT)"| opmSvc
-  clients -->|"Owner Bearer JWT"| opmSvc
-  clients -->|"Owner Bearer JWT"| phsSvc
-  clients -->|"Owner Bearer JWT"| amSvc
-  linkHolder -->|"external Share link"| amSvc
+    %% Latest-weight reads and activity-duration Health metric synchronization.
+    activityApi{group}:R --> L:phsApi{group}
 
-  phsSvc -->|"ownership, species, active status + platform JWT"| opmSvc
-  amSvc -->|"ownership and active status + platform JWT"| opmSvc
-  authSvc -->|"password hash and active status + platform JWT"| opmSvc
-  opmSvc -->|"revoke refresh tokens + platform JWT"| authSvc
-  amSvc -->|"latest weight + platform JWT"| phsSvc
-  amSvc -->|"activity-duration Health metric + platform JWT"| phsSvc
-  opmSvc -->|"Community-owner check; end belonging notify + platform JWT"| community
-  amSvc -->|"Forum or Group activity Share + platform JWT"| community
-  phsSvc & amSvc & opmSvc & authSvc -->|"client-credentials (platform JWT)"| authSvc
+    %% Community-owner checks, Deactivation notices, and Community Shares.
+    opmApi{group}:R --> L:community
+    activityApi{group}:R --> L:community
