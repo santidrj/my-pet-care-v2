@@ -1,13 +1,15 @@
 C4Component
     title Component diagram for Activity Manager
 
-    Person(owner, "Owner", "Trusted Owner identity")
-    System_Ext(opm, "Owner & Pet Manager", "Ownership and Pet status")
-    System_Ext(phs, "Pet Health Service", "Weight and activity-duration")
+    Person(owner, "Owner", "Owner Bearer JWT")
+    Person(linkHolder, "External link holder", "Capability URL, no JWT")
+    System_Ext(opm, "Owner & Pet Manager", "Ownership, Pet status, Pet name")
+    System_Ext(phs, "Pet Health Service", "Latest weight and activity-duration")
+    System_Ext(community, "Community collaborator", "Forum/Group Share accept and Belonging")
 
     Container_Boundary(am, "Activity Manager") {
         Component(types, "Activity types", "Owner-facing", "Platform-default and custom")
-        Component(activities, "Activities", "Owner-facing", "Logs, GPS, Calories burned")
+        Component(activities, "Activities", "Owner-facing", "Register, GPS, Calories burned")
         Component(shares, "Shares", "Owner-facing", "Create, resolve, revoke")
         ComponentDb(store, "Activity store", "System of record", "Types, Activities, Shares")
 
@@ -19,9 +21,12 @@ C4Component
     }
 
     Rel(owner, types, "Custom types")
-    Rel(owner, activities, "Logs Activities")
+    Rel(owner, activities, "Registers Activities")
     Rel(owner, shares, "Creates and revokes")
+    Rel(linkHolder, shares, "Resolves external Share")
     Rel(activities, opm, "Ownership and status", "synchronous")
+    Rel(shares, opm, "Pet name for snapshot", "synchronous")
     Rel(activities, phs, "Weight and duration", "synchronous")
+    Rel(shares, community, "Forum or Group activity Share", "synchronous")
 
     UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

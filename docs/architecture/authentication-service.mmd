@@ -2,25 +2,29 @@ C4Component
     title Component diagram for Authentication Service
 
     Person(owner, "Owner", "Logs in, refreshes, logs out, resets a password")
-    System_Ext(opm, "Owner & Pet Manager", "Password hash and active status")
+    System_Ext(opm, "Owner & Pet Manager", "Password hash, active status, revoke notices")
     System_Ext(mail, "Mail channel", "One reset message to the Owner's email")
+    System_Ext(platform, "Platform services", "Client-credentials for platform JWTs")
 
     Container_Boundary(auth, "Authentication Service") {
-        Component(login, "Login", "Owner-facing", "Identifier and password, issues tokens")
+        Component(login, "Login", "Owner-facing", "Identifier and password, issues Owner JWT")
         Component(session, "Refresh and logout", "Owner-facing", "Rotates or revokes one login")
         Component(reset, "Password reset", "Owner-facing", "Single-use link and new password")
+        Component(platformGrant, "Client-credentials", "Service-facing", "Issues platform JWT")
         Component(revocation, "Revocation", "Service-facing", "Deactivation and password change")
-        ComponentDb(store, "Login store", "System of record", "Refresh tokens, reset links, rate limits")
+        ComponentDb(store, "Login store", "System of record", "Refresh tokens, reset links, rate limits, platform clients")
 
         Rel(login, store, "Reads and writes")
         Rel(session, store, "Reads and writes")
         Rel(reset, store, "Reads and writes")
+        Rel(platformGrant, store, "Reads clients, writes tokens")
         Rel(revocation, store, "Revokes refresh tokens")
     }
 
     Rel(owner, login, "Signs in")
     Rel(owner, session, "Refreshes and logs out")
     Rel(owner, reset, "Resets a forgotten password")
+    Rel(platform, platformGrant, "Service id and secret")
     Rel(login, opm, "Hash and active status", "synchronous")
     Rel(session, opm, "Hash and active status", "synchronous")
     Rel(reset, opm, "Status and new password", "synchronous")
