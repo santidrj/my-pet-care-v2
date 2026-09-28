@@ -1,0 +1,19 @@
+{
+  "name": "@my-pet-care/community-collaborator-stub",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "PORT=3005 tsx watch src/main.ts",
+    "start": "node dist/main.js",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "fastify": "^5.12.5",
+    "pino": "^10.1.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

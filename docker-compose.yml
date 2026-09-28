@@ -16,5 +16,8 @@ services:
       timeout: 5s
       retries: 20
 
+# Community collaborator stub is a local Node process (port 3005), not containerized:
+#   pnpm --filter @my-pet-care/community-collaborator-stub dev
+
 volumes:
   postgres-data:

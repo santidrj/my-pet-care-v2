@@ -1,5 +1,13 @@
+import { readFile } from "node:fs/promises";
+import { createOutboundCredentialProvider } from "@my-pet-care/platform-service-authenticator";
+import { importSPKI } from "jose";
 import { buildApp } from "./app.js";
 import { createDatabase } from "./database.js";
+import { createArgon2PasswordHasher } from "./infrastructure/argon2-hasher.js";
+import { createAuthRevocationClient } from "./infrastructure/auth-revoke-client.js";
+import { createCommunityClient } from "./infrastructure/community-client.js";
+import { createDenylistPasswordPolicy } from "./infrastructure/denylist-policy.js";
+import { createUuidV7Generator } from "./infrastructure/ids.js";
 import { createLogger, type Logger } from "./logger.js";
 import { defaultPort, serviceName } from "./service.js";
 
@@ -28,6 +36,20 @@ function readPort(value: string | undefined, fallback: number): number | undefin
   return port;
 }
 
+async function loadPublicKey(): Promise<CryptoKey> {
+  const pem = process.env.JWT_PUBLIC_KEY;
+  const path = process.env.JWT_PUBLIC_KEY_PATH;
+  let spki: string;
+  if (pem !== undefined && pem.length > 0) {
+    spki = pem.includes("\\n") ? pem.replace(/\\n/g, "\n") : pem;
+  } else if (path !== undefined && path.length > 0) {
+    spki = await readFile(path, "utf8");
+  } else {
+    throw new Error("JWT_PUBLIC_KEY or JWT_PUBLIC_KEY_PATH is required.");
+  }
+  return importSPKI(spki, "EdDSA");
+}
+
 const requestedLevel = process.env.LOG_LEVEL;
 const logLevel = requestedLevel === undefined ? "info" : requestedLevel;
 const logger = createLogger(LOG_LEVELS.has(logLevel) ? logLevel : "info");
@@ -49,6 +71,54 @@ if (port === undefined) {
   await exitAfterFlush(logger, 1);
 }
 
+const authBaseUrl = process.env.AUTH_BASE_URL ?? "";
+const communityBaseUrl = process.env.COMMUNITY_BASE_URL ?? "";
+const platformServiceId = process.env.PLATFORM_SERVICE_ID ?? "owner-pet-manager";
+const platformServiceSecret = process.env.PLATFORM_SERVICE_SECRET ?? "";
+const authTokenUrl =
+  process.env.AUTH_TOKEN_URL ??
+  (authBaseUrl.length > 0 ? `${authBaseUrl.replace(/\/$/, "")}/oauth/token` : "");
+
+if (authBaseUrl.length === 0) {
+  logger.error({ service: serviceName, msg: "AUTH_BASE_URL is required." });
+  await exitAfterFlush(logger, 1);
+}
+if (communityBaseUrl.length === 0) {
+  logger.error({ service: serviceName, msg: "COMMUNITY_BASE_URL is required." });
+  await exitAfterFlush(logger, 1);
+}
+if (platformServiceSecret.length === 0) {
+  logger.error({
+    service: serviceName,
+    msg: "PLATFORM_SERVICE_SECRET is required.",
+  });
+  await exitAfterFlush(logger, 1);
+}
+if (authTokenUrl.length === 0) {
+  logger.error({ service: serviceName, msg: "AUTH_TOKEN_URL is required." });
+  await exitAfterFlush(logger, 1);
+}
+
+let publicKey: CryptoKey;
+try {
+  publicKey = await loadPublicKey();
+} catch (err) {
+  logger.error({
+    service: serviceName,
+    msg: "JWT public key could not be loaded.",
+    err,
+  });
+  await exitAfterFlush(logger, 1);
+}
+
+if (platformServiceId !== "owner-pet-manager") {
+  logger.error({
+    service: serviceName,
+    msg: "PLATFORM_SERVICE_ID must be owner-pet-manager.",
+  });
+  await exitAfterFlush(logger, 1);
+}
+
 const database = createDatabase(databaseUrl);
 try {
   await database.check();
@@ -58,7 +128,35 @@ try {
   await exitAfterFlush(logger, 1);
 }
 
-const app = buildApp(serviceName, logger);
+const outbound = createOutboundCredentialProvider({
+  tokenEndpoint: authTokenUrl,
+  serviceId: "owner-pet-manager",
+  secret: platformServiceSecret,
+});
+
+const deps = {
+  store: database.store,
+  passwordHasher: createArgon2PasswordHasher(),
+  passwordPolicy: createDenylistPasswordPolicy(),
+  community: createCommunityClient({
+    baseUrl: communityBaseUrl,
+    fetch: outbound.fetch,
+    logger,
+  }),
+  authRevocation: createAuthRevocationClient({
+    baseUrl: authBaseUrl,
+    fetch: outbound.fetch,
+    logger,
+  }),
+  ids: createUuidV7Generator(),
+};
+
+const app = await buildApp({
+  service: serviceName,
+  logger,
+  deps,
+  authenticator: { publicKey: publicKey! },
+});
 
 try {
   await app.ready();

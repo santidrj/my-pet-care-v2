@@ -16,7 +16,15 @@ import {
   notFoundProblem,
   problemDetailsSchema,
   type ProblemDetails,
+  validationFailedProblem,
 } from "@my-pet-care/contracts";
+import {
+  registerPlatformServiceAuthenticator,
+  type AuthenticatorPluginOptions,
+} from "@my-pet-care/platform-service-authenticator";
+import type { UseCaseDeps } from "./application/ports.js";
+import { registerRoutes } from "./http/routes.js";
+import { enterCorrelationId } from "./infrastructure/correlation.js";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -95,7 +103,16 @@ function completedFields(
   return fields;
 }
 
-export function buildApp(service: string, logger: Logger) {
+export type BuildAppOptions = {
+  service: string;
+  logger: Logger;
+  deps: UseCaseDeps;
+  authenticator: AuthenticatorPluginOptions;
+};
+
+export async function buildApp(options: BuildAppOptions) {
+  const { service, logger, deps, authenticator } = options;
+
   const app = Fastify({
     loggerInstance: logger,
     logController: new LogController({ disableRequestLogging: true }),
@@ -106,6 +123,7 @@ export function buildApp(service: string, logger: Logger) {
 
   app.addHook("onRequest", async (request) => {
     request.correlationId = correlationIdFrom(request.headers["request-id"]);
+    enterCorrelationId(request.correlationId);
   });
 
   app.addHook("onResponse", async (request, reply) => {
@@ -130,12 +148,32 @@ export function buildApp(service: string, logger: Logger) {
   });
 
   app.setErrorHandler((error, request, reply) => {
+    if (
+      error !== null &&
+      typeof error === "object" &&
+      "validation" in error
+    ) {
+      failures.set(request, { problemType: validationFailedProblem.type });
+      return sendProblem(reply, validationFailedProblem);
+    }
     failures.set(request, {
       problemType: internalErrorProblem.type,
       error,
     });
     return sendProblem(reply, internalErrorProblem);
   });
+
+  await registerPlatformServiceAuthenticator(
+    app as unknown as Parameters<typeof registerPlatformServiceAuthenticator>[0],
+    {
+      ...authenticator,
+      publicRoutes: [
+        { method: "GET", path: "/health" },
+        { method: "POST", path: "/owners" },
+        ...(authenticator.publicRoutes ?? []),
+      ],
+    },
+  );
 
   app.get(
     "/health",
@@ -149,6 +187,16 @@ export function buildApp(service: string, logger: Logger) {
       },
     },
     () => ({ status: "ok" as const }),
+  );
+
+  registerRoutes(
+    app as unknown as Parameters<typeof registerRoutes>[0],
+    deps,
+    {
+      record(request, problemType, error) {
+        failures.set(request, { problemType, error });
+      },
+    },
   );
 
   return app;
