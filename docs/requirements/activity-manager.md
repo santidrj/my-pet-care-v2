@@ -21,6 +21,7 @@ This version covers **functional requirements** and an initial set of **non-func
 | **Recipient Owner** | Another Owner who receives an in-platform share of an Activity. |
 | **Forum** | A discussion area within a Community. May be the audience of a Share. |
 | **Group activity** | A planned event within a Community. May be the audience of a Share. |
+| **Community collaborator** | Future integration that answers Belonging for Forum/Group Share resolve and accepts Forum or Group activity share references. Until it exists, those Shares fail closed. |
 | **Unauthenticated link holder** | Anyone who opens a valid external share link and can read the share snapshot until the share is revoked. |
 
 ## Scope
@@ -34,7 +35,7 @@ This version covers **functional requirements** and an initial set of **non-func
 - Sync of activity duration **Health metric** to Pet Health on Activity create/update/delete (metric value = duration in minutes)
 - In-platform Share to another Owner, a Forum, or a Group activity; external share payload (link + summary); resolve and revoke shares
 - Ownership checks via Owner & Pet Manager; deactivated-Pet write/read rules
-- Initial NFRs for latency, Owner data isolation, and dependence on OPM / Pet Health
+- Initial NFRs for latency, Owner data isolation, and dependence on Owner & Pet Manager / Pet Health
 
 ### Out of scope
 
@@ -45,7 +46,7 @@ This version covers **functional requirements** and an initial set of **non-func
 - Route-based calorie or Health-metric calculation
 - Live tracking / streaming GPS while an Activity is in progress (only a completed route when the Activity is registered)
 - Ownership transfer, authentication protocols, and offline-only clients
-- Reactivation of deactivated Pets (OPM concern)
+- Reactivation of deactivated Pets (Owner & Pet Manager concern)
 - Analytics dashboards, streaks, and leaderboards
 - Bulk import of Activities from wearables or other apps
 
@@ -63,22 +64,27 @@ This version covers **functional requirements** and an initial set of **non-func
 - Activity deletes are **hard** deletes; linked Health metrics are removed/corrected; shares for that Activity become unavailable.
 - Shareable unit is a **single Activity**. A Share’s audience is another Owner, a Forum, a Group activity, or anyone holding an external link. The Community itself is not an audience. An Owner who belongs to a Community may read a Share addressed to one of its Forums or Group activities. Share snapshot includes: Pet display name, Activity type label, timestamp, duration, optional notes, calories burned, optional Activity amount, media if present, and for GPS Activities the route (full route acceptable in this version).
 - External share links are secret capability URLs: anyone with the link may read the snapshot until revoked.
-- Owner-facing writes require verified ownership of the Pet via OPM; create/update fail if the Pet is missing or deactivated; reads of existing Activities remain allowed when the Pet is deactivated; hard delete remains allowed when deactivated.
+- Owner-facing writes require verified ownership of the Pet via Owner & Pet Manager; create/update fail if the Pet is missing or deactivated; reads of existing Activities remain allowed when the Pet is deactivated; hard delete remains allowed when deactivated. Share create and revoke are Owner-facing writes and fail when the Pet is deactivated.
+- Route or GPS payload on a non-GPS-capable Activity type is **rejected** (not ignored).
+- Soft-retired custom Activity types cannot be renamed.
+- Share snapshot Pet display name is the Pet’s **name** from Owner & Pet Manager at share-create time (fixed on the snapshot thereafter).
+- Activity↔activity-duration Health metric correlation uses the **Activity id**: create returns/stores the metric keyed by Activity id; update corrects that same metric (duration minutes and timestamp = Activity timestamp); hard-delete removes that metric.
+- When latest weight is empty or Pet Health cannot be reached for weight or activity-duration sync, Activity create/update that needs a system calorie estimate or sync **fails closed** (no anonymous fallback). Clear-override re-estimate follows the same rule.
 
 ## Constraints
 
 - Backend service in this monorepo; clients are separate.
 - Must integrate with **Owner & Pet Manager** (ownership / Pet status) and **Pet Health** (latest weight; activity duration metric sync).
-- An in-platform Share to a Forum or Group activity requires that target to accept an Activity share reference; if it cannot, the Share fails closed or is feature-flagged without removing the requirement.
+- An in-platform Share to a Forum or Group activity requires the **Community collaborator** to accept an Activity share reference; if it cannot (including while that collaborator does not yet exist), the Share **fails closed** (ADR-0002).
 - External share is link + summary text only; no vendor messaging API keys or compliance scope in this version.
 - GPS route payloads must be size-bounded; the service may reject oversized routes (exact limit in the spec/test plan).
 - Hard delete of Activities is permanent.
 
 ## Assumptions
 
-- Authentication of the calling Owner is handled outside this service; the service receives a trusted Owner identity.
-- Pet Health exposes (or will expose) APIs for latest weight and for writing/correcting/deleting activity duration Health metrics.
-- A Forum or Group activity can accept an Activity share reference for an in-platform Share.
+- Inbound Bearer JWT verification and outbound platform credentials use the shared **platform-service authenticator** (ADR-0016). Owner calls carry `ownerId` with `aud` = `my-pet-care`; outbound calls to Owner & Pet Manager, Pet Health Service, and the Community collaborator present this service’s platform JWT (`service` = `activity-manager`, `aud` = `my-pet-care:platform`). External Share link resolution and health/liveness are on the authenticator allowlist.
+- Pet Health Service exposes latest-weight read and activity-duration Health metric create/correct/hard-delete for Activity Manager (platform JWT).
+- Until the Community collaborator can accept a Forum or Group activity share reference, Share create to those audiences fails closed.
 - Clients perform OS-level external shares using the link/summary this service returns.
 - Platform default Activity types are seeded by deployment/ops, not by Owners.
 - “Normal load” for latency NFRs matches the same notion used in Pet Health requirements.
@@ -118,7 +124,7 @@ This version covers **functional requirements** and an initial set of **non-func
 1. The Owner can rename their custom Activity type.
 2. Rename fails for platform-default types.
 3. Rename fails for types the Owner does not own.
-4. Rename fails for soft-retired types, or is defined to only affect display going forward in a documented way; historical Activities continue to resolve a stable type identity.
+4. Rename fails for soft-retired types. Historical Activities continue to resolve a stable type identity.
 5. Rename fails if the name/label is missing or invalid.
 
 ### AM-FR-004 — Delete custom Activity type
@@ -140,10 +146,10 @@ This version covers **functional requirements** and an initial set of **non-func
 **Acceptance criteria:**
 
 1. The Owner can create an Activity with Pet id, Activity type, timestamp, duration, and optional Activity amount, notes, and media references.
-2. If the Activity type is GPS-capable, create requires a route/GPS payload and the result is a GPS Activity; otherwise route is rejected or ignored and a plain Activity is stored.
+2. If the Activity type is GPS-capable, create requires a route/GPS payload and the result is a GPS Activity; otherwise a route in the request is rejected and a plain Activity is not stored.
 3. Activity amount may be omitted; when present it follows type-dependent meaning (e.g. distance or count) without driving the Health metric in this version.
-4. On success, calories burned are system-estimated from duration, Pet latest weight (Pet Health), and the type’s calorie factor.
-5. On success, an activity duration Health metric equal to duration in minutes is written to Pet Health for that Pet.
+4. On success, calories burned are system-estimated from duration, Pet latest weight (Pet Health), and the type’s calorie factor. Create fails closed if latest weight is empty or Pet Health cannot be reached for the weight read.
+5. On success, an activity-duration Health metric equal to duration in minutes with timestamp equal to the Activity timestamp is written to Pet Health for that Pet, correlated by **Activity id**. Create fails closed if that sync cannot be completed.
 6. Create fails if the caller is not the Pet’s Owner.
 7. Create fails if the Pet does not exist or is deactivated in Owner & Pet Manager.
 8. Create fails if the Activity type is missing, not pickable (e.g. soft-retired or not visible to the Owner), or invalid for the request.
@@ -170,10 +176,10 @@ This version covers **functional requirements** and an initial set of **non-func
 **Acceptance criteria:**
 
 1. The Pet’s Owner can update permitted fields (timestamp, duration, Activity amount, notes, media references, route for GPS Activities, Activity type when valid).
-2. Changing to or from a GPS-capable type enforces GPS Activity route rules (require route when GPS-capable; reject/ignore when not).
-3. If estimate inputs change and no Owner calorie override is set, calories burned are re-estimated.
+2. Changing to or from a GPS-capable type enforces GPS Activity route rules (require route when GPS-capable; reject route when not).
+3. If estimate inputs change and no Owner calorie override is set, calories burned are re-estimated. Re-estimate fails closed if latest weight is empty or Pet Health cannot be reached.
 4. If an Owner calorie override is set, it remains until cleared (see AM-FR-008).
-5. On success, the activity duration Health metric in Pet Health is corrected to match the new duration in minutes.
+5. On success, the activity-duration Health metric in Pet Health for this Activity id is corrected to the new duration in minutes and the Activity timestamp. Update fails closed if that sync cannot be completed.
 6. Update fails if the caller is not the Pet’s Owner.
 7. Update fails if the Pet does not exist or is deactivated in Owner & Pet Manager.
 8. Update fails if the Activity does not exist or validation fails (including oversized/invalid GPS route).
@@ -185,7 +191,7 @@ This version covers **functional requirements** and an initial set of **non-func
 **Acceptance criteria:**
 
 1. The Pet’s Owner can set an explicit calories-burned value on an Activity (override).
-2. The Pet’s Owner can clear the override; the service re-estimates from current duration, latest weight, and type factor.
+2. The Pet’s Owner can clear the override; the service re-estimates from current duration, latest weight, and type factor. Clear fails closed if latest weight is empty or Pet Health cannot be reached.
 3. While an override is set, create/update paths that would re-estimate do not replace the overridden value.
 4. Override/clear fails if the caller is not the Pet’s Owner or the Activity does not exist.
 5. Override/clear fails if the Pet is deactivated (writes) per AM ownership rules; reads of the stored value remain allowed when deactivated.
@@ -197,7 +203,7 @@ This version covers **functional requirements** and an initial set of **non-func
 **Acceptance criteria:**
 
 1. The Pet’s Owner can hard-delete an Activity.
-2. On success, the corresponding activity duration Health metric is removed or corrected in Pet Health.
+2. On success, the activity-duration Health metric for this Activity id is hard-deleted in Pet Health. Delete fails closed if that sync cannot be completed.
 3. On success, shares of that Activity become unavailable / resolve as no longer available.
 4. Delete fails if the caller is not the Pet’s Owner.
 5. Delete remains allowed when the Pet is deactivated.
@@ -212,8 +218,9 @@ This version covers **functional requirements** and an initial set of **non-func
 1. The Pet’s Owner can share a single existing Activity to another Owner by recipient identity.
 2. On success, the recipient can resolve the share under share-visibility rules (AM-FR-012).
 3. Share fails if the caller is not the Pet’s Owner or the Activity does not exist.
-4. Share fails if the recipient Owner does not exist or is invalid.
-5. The share snapshot includes the fields defined in domain rules (including media and GPS route when present).
+4. Share fails if the Pet is deactivated in Owner & Pet Manager.
+5. Share fails if the recipient Owner does not exist or is invalid.
+6. On success, the share snapshot includes the fields defined in domain rules (including Pet **name** from Owner & Pet Manager, media, and GPS route when present). That snapshot is fixed at share-create time.
 
 ### AM-FR-011 — Share Activity to a Forum or Group activity
 
@@ -224,8 +231,9 @@ This version covers **functional requirements** and an initial set of **non-func
 1. The Pet’s Owner can share a single existing Activity to a Forum or a Group activity.
 2. On success, that Forum or Group activity can present the Share under share-visibility rules.
 3. Share fails if the caller is not the Pet’s Owner or the Activity does not exist.
-4. Share fails closed (or is unavailable) if the Forum or Group activity does not exist or cannot accept the share reference.
-5. The Community itself and a Shared location are not valid audiences.
+4. Share fails if the Pet is deactivated in Owner & Pet Manager.
+5. Share fails closed if the Forum or Group activity does not exist or the Community collaborator cannot accept the share reference (including while that collaborator does not yet exist).
+6. The Community itself and a Shared location are not valid audiences.
 
 ### AM-FR-012 — Create external share and resolve shares
 
@@ -250,7 +258,8 @@ This version covers **functional requirements** and an initial set of **non-func
 1. The Pet’s Owner can revoke an in-platform Owner Share, a Forum Share, a Group activity Share, or an external Share they created for that Activity.
 2. After revoke, resolve/view of that share fails as no longer available (including external capability URLs).
 3. Revoke fails if the caller is not the Pet’s Owner or the share does not exist.
-4. Revoking one share does not by itself delete the Activity.
+4. Revoke fails if the Pet is deactivated in Owner & Pet Manager.
+5. Revoking one share does not by itself delete the Activity.
 
 ## Quality attributes (NFRs)
 
@@ -289,7 +298,7 @@ This version covers **functional requirements** and an initial set of **non-func
 
 **Acceptance criteria:**
 
-1. Writes that require an active Pet fail when OPM reports the Pet missing or deactivated.
+1. Writes that require an active Pet fail when Owner & Pet Manager reports the Pet missing or deactivated, and fail closed when Owner & Pet Manager cannot be reached for that check.
 2. This service does not create, update, or deactivate Pets or Owners.
 
 ### AM-NFR-005 — Dependence on Pet Health Service
@@ -298,6 +307,6 @@ This version covers **functional requirements** and an initial set of **non-func
 
 **Acceptance criteria:**
 
-1. Calorie estimation uses the Pet’s latest weight from Pet Health when available; behavior when weight is absent is documented and deterministic (estimate fails or uses a documented fallback).
-2. Activity create/update/delete syncs the activity duration Health metric (duration in minutes) to Pet Health.
+1. Calorie estimation requires a non-empty latest weight from Pet Health. If weight is empty or Pet Health cannot be reached, the estimate path fails closed (no fallback weight).
+2. Activity create/update/delete syncs the activity-duration Health metric (duration in minutes, timestamp = Activity timestamp, correlated by Activity id) to Pet Health and fails closed if that call cannot be completed.
 3. This service does not own Health profile or other Health metric dimensions beyond that sync contract.

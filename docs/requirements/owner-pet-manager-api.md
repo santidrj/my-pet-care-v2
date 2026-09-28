@@ -5,8 +5,8 @@ This document maps **Owner & Pet Manager** functional requirements to resource-o
 ## Conventions
 
 - **Base style:** JSON over HTTP. Success bodies are ordinary JSON resources. Errors are RFC 9457 Problem Details as `application/problem+json` (ADR-0010, ADR-0014).
-- **Auth:** Every route requires a Bearer JWT (ADR-0011) except `POST /owners` (Create Owner), which is public so an Owner can register before login (ADR-0015).
-- **Actors in the token:** An Owner call carries that Owner’s id. A platform call names the calling service (Pet Health Service, Activity Manager, Authentication Service, or Community collaborator). The service applies authorization from the claim and the route rules below.
+- **Auth:** Every route requires a Bearer JWT (ADR-0016) except `POST /owners` (Create Owner), which is public so an Owner can register before login (ADR-0015).
+- **Actors in the token:** An Owner call carries claim `ownerId`. A platform call carries claim `service` naming the calling service (`pet-health-service`, `activity-manager`, `authentication-service`, or `community`). The service applies authorization from the claim and the route rules below. Tokens are verified via the platform-service authenticator (ADR-0016).
 - **Deactivation:** `DELETE` on an Owner or Pet means **Deactivation** (soft). It is not a Hard delete. See the glossary and OPM-FR-004 / OPM-FR-008.
 - **Ids:** `{ownerId}` and `{petId}` are the resource ids returned on create. The path segment `credentials` is reserved and is never an `{ownerId}`.
 - **Self vs other:** For Owner-facing writes, the Owner id in the path must be the Owner in the token (or, for Pets, the Pet’s Owner). Platform services use the service-facing rules in each FR.
@@ -27,7 +27,7 @@ This document maps **Owner & Pet Manager** functional requirements to resource-o
 | Method | Path | Auth | Requirement | Success | Notes |
 | ------ | ---- | ---- | ----------- | ------- | ----- |
 | `POST` | `/owners` | Public | [OPM-FR-001](./owner-pet-manager.md#opm-fr-001--create-owner) | `201` | Body: username, email, password; optional photo. |
-| `GET` | `/owners/{ownerId}` | Owner or platform | [OPM-FR-002](./owner-pet-manager.md#opm-fr-002--get-owner) | `200` | Another Owner does not receive **email**. Password and hash never returned. |
+| `GET` | `/owners/{ownerId}` | Owner or platform | [OPM-FR-002](./owner-pet-manager.md#opm-fr-002--get-owner) | `200` | Another Owner does not receive **email**. Includes **Pet list visibility**. Password and hash never returned. |
 | `GET` | `/owners?username={username}` | Owner or platform | [OPM-FR-002](./owner-pet-manager.md#opm-fr-002--get-owner) | `200` | Unique username lookup. Unknown username is not-found, distinct from success. |
 | `PATCH` | `/owners/{ownerId}` | Owning Owner | [OPM-FR-003](./owner-pet-manager.md#opm-fr-003--update-owner) | `200` | username, email, password, photo. Password change notifies Authentication Service to revoke refresh tokens. |
 | `DELETE` | `/owners/{ownerId}` | Owning Owner | [OPM-FR-004](./owner-pet-manager.md#opm-fr-004--deactivate-owner) | `204` | Deactivation (Community-owner gate, cascade to active Pets). |
@@ -47,7 +47,7 @@ These routes are callable only with an Authentication Service platform claim. Ow
 
 | Method | Path | Auth | Requirement | Success | Notes |
 | ------ | ---- | ---- | ----------- | ------- | ----- |
-| `POST` | `/owners/{ownerId}/pets` | Owning Owner | [OPM-FR-005](./owner-pet-manager.md#opm-fr-005--create-pet) | `201` | name, species, sex required; breed, date of birth, photo optional. |
+| `POST` | `/owners/{ownerId}/pets` | Owning Owner | [OPM-FR-005](./owner-pet-manager.md#opm-fr-005--create-pet) | `201` | name, species (`dog`\|`cat`), sex required; breed, date of birth, photo optional. |
 | `GET` | `/owners/{ownerId}/pets` | Owner or platform | [OPM-FR-009](./owner-pet-manager.md#opm-fr-009--list-pets-for-owner) | `200` | Query: `status=active\|all` (omit = `active`). Another Owner only when Pet list visibility is **public**, and then only active **Pet summaries** — `status=all` does not reveal deactivated Pets to them. Owner and platform services receive full Pet records; with `status=all` they may include deactivated Pets. |
 
 ### Pets (flat resource)

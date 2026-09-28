@@ -71,7 +71,7 @@ This document defines the requirements for the **Pet Health Service** of the My 
 
 ## Assumptions
 
-- Login and credential checks happen outside this service. Pet Health Service receives a trusted Owner identity on Owner-facing calls, and it can tell those calls apart from trusted calls by Activity Manager. It does not implement login.
+- Inbound Bearer JWT verification and outbound platform credentials use the shared **platform-service authenticator** (ADR-0016). Owner calls carry `ownerId` with `aud` = `my-pet-care`. Outbound calls to Owner & Pet Manager present this service’s platform JWT (`service` = `pet-health-service`). Health/liveness are on the authenticator allowlist. This service does not implement login.
 
 ## Functional requirements
 
@@ -82,21 +82,22 @@ This document defines the requirements for the **Pet Health Service** of the My 
 **Acceptance criteria:**
 
 1. The Pet’s Owner can retrieve the Health profile by Pet id.
-2. The profile always includes latest weight. The value equals the latest remaining weight Health metric by timestamp, and is empty when none remain.
-3. The profile always includes recommended daily kilocalories. The value is the computed or overridden amount, and is empty when neither has been set.
-4. Retrieval fails if the caller is not the Pet’s Owner.
-5. Retrieval of a non-existent Pet fails in a way distinguishable from success.
-6. Retrieval remains allowed when the Pet is deactivated in Owner & Pet Manager.
+2. Activity Manager, with a platform JWT whose `service` is `activity-manager`, can retrieve the Health profile by Pet id for latest-weight reads used in calorie estimation (same profile shape). Other platform services are not callers of this operation unless a later FR authorizes them.
+3. The profile always includes latest weight. The value equals the latest remaining weight Health metric by timestamp, and is empty when none remain.
+4. The profile always includes recommended daily kilocalories. The value is the computed or overridden amount, and is empty when neither has been set.
+5. Retrieval fails if the caller is neither the Pet’s Owner nor Activity Manager as above.
+6. Retrieval of a non-existent Pet fails in a way distinguishable from success.
+7. Retrieval remains allowed when the Pet is deactivated in Owner & Pet Manager.
 
 ### PHS-FR-002 — Record weight
 
-**Description:** The Owner records a weight reading for a Pet. The service appends a weight Health metric and updates the Health profile’s latest weight.
+**Description:** The Owner records a weight reading for a Pet. The service appends a weight Health metric and recomputes the Health profile’s latest weight from remaining metrics by timestamp.
 
 **Acceptance criteria:**
 
 1. The Pet’s Owner can record a weight with a **value** and **timestamp**.
 2. The value must be greater than zero. A missing or invalid timestamp fails.
-3. On success, a weight Health metric is appended and the Health profile’s latest weight equals that value.
+3. On success, a weight Health metric is appended and the Health profile’s latest weight equals the latest remaining weight metric by timestamp (which may still be an older reading if this timestamp is backdated).
 4. Record fails if the caller is not the Pet’s Owner.
 5. Record fails if the Pet does not exist or is deactivated in Owner & Pet Manager.
 6. There is no separate edit-profile-weight path that skips history.
@@ -276,9 +277,9 @@ This document defines the requirements for the **Pet Health Service** of the My 
 
 **Acceptance criteria:**
 
-1. Activity Manager can create one activity-duration Health metric for an Activity. The value is duration in minutes and the timestamp is the Activity’s timestamp.
-2. Activity Manager can correct that same metric when the Activity is updated.
-3. Activity Manager can hard-delete that metric when the Activity is hard-deleted.
+1. Activity Manager, with a platform JWT whose `service` is `activity-manager`, can create one activity-duration Health metric for an Activity. The value is duration in minutes, the timestamp is the Activity’s timestamp, and the metric is correlated by **Activity id**.
+2. Activity Manager can correct that same metric (same Activity id) when the Activity is updated, including duration and timestamp.
+3. Activity Manager can hard-delete that metric (by Activity id) when the Activity is hard-deleted.
 4. Create and update fail if the Pet does not exist or is deactivated.
 5. Hard-delete of the metric succeeds when the Pet is deactivated.
 6. The Pet’s Owner can list activity-duration Health metrics for a Pet and get one by id, including when the Pet is deactivated.
@@ -326,8 +327,8 @@ This document defines the requirements for the **Pet Health Service** of the My 
 
 1. An Owner cannot read the Health profile, Health metrics, Meals, Washes, Medical record, Vet visits, or Medications for a Pet they do not own.
 2. An Owner cannot create, update, or delete those resources for a Pet they do not own.
-3. Before Owner-facing writes and Owner-facing reads of Pet-scoped data, the service verifies ownership with Owner & Pet Manager.
-4. Activity Manager may perform the activity-duration writes and the hard-delete defined in PHS-FR-016.
+3. Before Owner-facing writes and Owner-facing reads of Pet-scoped data, the service verifies ownership with Owner & Pet Manager and fails closed when Owner & Pet Manager cannot be reached.
+4. Activity Manager may perform Get Health profile (latest-weight) and the activity-duration writes and hard-delete defined in PHS-FR-001 and PHS-FR-016, using a platform JWT with `service` = `activity-manager`.
 
 ### PHS-NFR-004 — Dependence on Owner & Pet Manager
 
@@ -335,6 +336,6 @@ This document defines the requirements for the **Pet Health Service** of the My 
 
 **Acceptance criteria:**
 
-1. Writes that require an active Pet fail when Owner & Pet Manager reports the Pet missing or deactivated, except the activity-duration hard-delete in PHS-FR-016.
-2. Recommended kilocalories computation uses species from Owner & Pet Manager for the Pet id.
+1. Writes that require an active Pet fail when Owner & Pet Manager reports the Pet missing or deactivated, except the activity-duration hard-delete in PHS-FR-016, and fail closed when Owner & Pet Manager cannot be reached for that check.
+2. Recommended kilocalories computation uses species from Owner & Pet Manager for the Pet id. Species values are `dog` or `cat`; an unexpected species fails computation as unresolved.
 3. This service does not create, update, or deactivate Pets or Owners.

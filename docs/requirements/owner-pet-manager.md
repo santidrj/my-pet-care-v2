@@ -20,7 +20,7 @@ HTTP method and path mapping for these requirements: [`owner-pet-manager-api.md`
 | **Owner** | The person who manages one or more Pets. Creates and maintains their own profile and their Pets, and sets Pet list visibility. |
 | **Other platform services** | Backend services (for example Pet Health Service or Activity Manager) that look up Owners and Pets and verify ownership before acting on a Pet. |
 | **Authentication Service** | Reads password hash and active status for login and refresh, and sets a new password when a forgotten-password reset completes. |
-| **Community service** | The future service that answers whether an Owner is still **Community owner** of any Community. Owner & Pet Manager calls it when deactivating an Owner. It owns ending **belonging** and the **Community administrator** role. |
+| **Community collaborator** | The future collaborator that answers whether an Owner is still **Community owner** of any Community, and that ends **belonging** and the **Community administrator** role after Owner Deactivation. Owner & Pet Manager calls it when deactivating an Owner. |
 
 ## Scope
 
@@ -31,7 +31,7 @@ HTTP method and path mapping for these requirements: [`owner-pet-manager-api.md`
 - Owner–Pet management: linking a Pet to exactly one Owner, listing an Owner’s Pets, and checking whether an Owner manages a Pet
 - **Pet list visibility**: Owner-controlled public/private setting for their Pet list
 - **Pet summary** reads for other Owners: the public list and Get Pet Summary
-- Community-owner gate on Owner Deactivation, delegated to the Community service
+- Community-owner gate on Owner Deactivation, and post-deactivation notify to end belonging, delegated to the Community collaborator
 - Serving other platform services that need Owner and Pet identity and ownership
 - Password hash and active-status reads for the Authentication Service, and setting a new password when that service completes a reset
 - Quality attributes for latency, Owner data isolation, and credential and data protection in transit
@@ -39,7 +39,7 @@ HTTP method and path mapping for these requirements: [`owner-pet-manager-api.md`
 ### Out of scope
 
 - Health metrics, the Medical record, Activity types, Activities, and social features (Communities, Forums, Shared locations, Group activities), except the Community-owner check this service consumes
-- Ending an Owner’s belonging in every Community, and ending their Community administrator role, when that Owner is deactivated (carried out by the Community service)
+- Ending an Owner’s belonging in every Community, and ending their Community administrator role, when that Owner is deactivated (carried out by the Community collaborator after this service notifies it)
 - Login, refresh, logout, and forgotten-password reset flows (Authentication Service). This service stores the password hash and serves the credential operations those flows need.
 - Ownership transfer between Owners
 - Reactivation of deactivated Owners or Pets
@@ -58,25 +58,26 @@ HTTP method and path mapping for these requirements: [`owner-pet-manager-api.md`
 - If Owner & Pet Manager cannot complete the Community-owner check, Owner Deactivation fails and leaves that Owner and their Pets unchanged.
 - When Owner Deactivation proceeds, it deactivates that Owner’s active Pets first, then deactivates the Owner.
 - Deactivating an Owner or Pet that is already deactivated fails. The record stays deactivated.
-- A successful Owner Deactivation ends that Owner’s belonging in every Community and their Community administrator role in each. The Community service carries out that ending. This service does not.
-- **Pet list visibility** defaults to **private**. The Owner may set it to **public**.
+- A successful Owner Deactivation notifies the Community collaborator to end that Owner’s belonging in every Community and their Community administrator role in each. The Community collaborator carries out that ending. This service does not store belonging. If that notify cannot be completed, Deactivation still succeeds (same pattern as Authentication Service revoke).
+- **Pet list visibility** defaults to **private**. The Owner may set it to **public**. When public, other Owners may read **Pet summaries** only — not full Pet records via Get Pet.
 - A **Pet summary** is the Pet id, name, species, breed, date of birth, sex, and photo. Breed, date of birth, and photo are present only when set.
 - When Pet list visibility is public, another Owner may read Pet summaries for that Owner’s active Pets. They cannot Get Pet.
+- **Species** on a Pet must be `dog` or `cat` (glossary).
 - This service does not return a Medical record, a Health metric, or an Activity.
 
 ## Constraints
 
 - This backend service is the system of record for Owners, Pets, the one-Owner-per-Pet rule, Deactivation, and Pet list visibility. Clients are separate.
 - It does not own health, activity, or Community data.
-- The Community-owner check is delegated to the Community service. Owner Deactivation fails closed when that check cannot be made.
+- The Community-owner check and post-deactivation belonging notify are delegated to the Community collaborator. Owner Deactivation fails closed when the Community-owner check cannot be made.
 - Photo values are opaque references. This service does not run an upload or storage pipeline.
 - Reactivation and ownership transfer are not supported.
 - Passwords are not stored in plaintext. Encryption at rest is outside this requirements version. Password strength is enforced on create and on password change (ADR-0012).
 
 ## Assumptions
 
-- Login and credential checks happen in the Authentication Service. Owner & Pet Manager receives a trusted Owner identity on Owner-facing calls, and it can tell those calls apart from trusted calls by other platform services and by the Community service. It does not implement login.
-- The password hash is readable by the Authentication Service only. On Deactivation and on password change, this service tells the Authentication Service to revoke that Owner’s refresh tokens. The Owner change still succeeds if that call cannot be completed.
+- Inbound Bearer JWT verification and outbound platform credentials use the shared **platform-service authenticator** (ADR-0016). Owner calls carry `ownerId` with `aud` = `my-pet-care`. Outbound calls to Authentication Service (revoke) and the Community collaborator present this service’s platform JWT (`service` = `owner-pet-manager`, `aud` = `my-pet-care:platform`). Create Owner and health/liveness are on the authenticator allowlist. This service does not implement login.
+- The password hash is readable by the Authentication Service only (Auth-only platform JWT). On Deactivation and on password change (including set-password from Auth), this service tells the Authentication Service to revoke that Owner’s refresh tokens via `POST /owners/{ownerId}/token-revocations`. The Owner change still succeeds if that call cannot be completed. Revoke notices are idempotent with Auth’s in-process revoke on completed reset (AUTH-FR-005 / AUTH-FR-006).
 
 ## Functional requirements
 
@@ -109,6 +110,7 @@ HTTP method and path mapping for these requirements: [`owner-pet-manager-api.md`
 4. A deactivated Owner can still be retrieved (callers can observe deactivated status).
 5. Responses never include the Owner’s **password** (see OPM-NFR-004).
 6. An Owner retrieving another Owner does not receive that Owner’s **email** (see OPM-NFR-003).
+7. The response includes the Owner’s current **Pet list visibility** (`public` or `private`).
 
 ### OPM-FR-003 — Update Owner
 
@@ -141,7 +143,7 @@ HTTP method and path mapping for these requirements: [`owner-pet-manager-api.md`
 7. Deactivation of an already deactivated Owner fails in a way distinguishable from not-found. The Owner stays deactivated.
 8. A deactivated Owner cannot be updated (see OPM-FR-003).
 9. Reactivation is not supported.
-10. This operation does not end belonging or the Community administrator role.
+10. This operation does not itself end belonging or the Community administrator role; after the Owner is marked inactive it notifies the Community collaborator to end them. Deactivation still succeeds if that notify cannot be completed.
 11. On success, this service tells the Authentication Service to revoke that Owner’s refresh tokens. Deactivation still succeeds if that call cannot be completed.
 
 ### OPM-FR-005 — Create Pet
@@ -153,10 +155,11 @@ HTTP method and path mapping for these requirements: [`owner-pet-manager-api.md`
 1. An active Owner can create a Pet with **name**, **species**, and **sex**.
 2. **Breed**, **date of birth**, and **photo** may be omitted; if provided, photo is stored as an opaque reference.
 3. **Sex** must be one of: `male`, `female`, `unknown`.
-4. On success, the creating Owner is the Pet’s only Owner.
-5. Create fails if the creating Owner does not exist or is deactivated.
-6. Create fails if any required field (name, species, sex) is missing or sex is not an allowed value.
-7. On success, the Pet is active and can be retrieved by id.
+4. **Species** must be one of: `dog`, `cat`.
+5. On success, the creating Owner is the Pet’s only Owner.
+6. Create fails if the creating Owner does not exist or is deactivated.
+7. Create fails if any required field (name, species, sex) is missing or sex or species is not an allowed value.
+8. On success, the Pet is active and can be retrieved by id.
 
 ### OPM-FR-006 — Get Pet
 
@@ -178,10 +181,11 @@ HTTP method and path mapping for these requirements: [`owner-pet-manager-api.md`
 **Acceptance criteria:**
 
 1. The Pet’s Owner can update **name**, **species**, **breed**, **date of birth**, **sex**, and **photo** (optional fields may be set, changed, or cleared where applicable).
-2. **Sex**, when present in the update, must be one of: `male`, `female`, `unknown`.
+2. **Sex**, when present in the update, must be one of: `male`, `female`, `unknown`. **Species**, when present, must be one of: `dog`, `cat`.
 3. Update fails if the caller is not the Pet’s Owner.
-4. Update of a non-existent Pet fails.
-5. Update of a deactivated Pet fails.
+4. Update fails if sex or species is not an allowed value.
+5. Update of a non-existent Pet fails.
+6. Update of a deactivated Pet fails.
 
 ### OPM-FR-008 — Deactivate Pet
 
