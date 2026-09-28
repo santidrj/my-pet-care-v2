@@ -1,0 +1,19 @@
+$kind: http-request
+description: |
+  AM-FR-001. Resolves a platform-default or this Owner's custom type,
+  including a soft-retired type.
+url: "{{baseUrl}}/activity-types/:activityTypeId"
+method: GET
+headers:
+  Accept: application/json
+pathVariables:
+  - key: activityTypeId
+    value: '{{activityTypeId}}'
+    disabled: false
+    description: "(Required) "
+  - key: baseUrl
+    value: "{{baseUrl}}"
+    description: ""
+settings: {}
+examples: ./.resources/Get Activity type.resources/examples
+order: 3000

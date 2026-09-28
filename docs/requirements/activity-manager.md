@@ -4,6 +4,8 @@
 
 This document defines the requirements for the **Activity Manager** service of the My Pet Care platform. It captures what the service must do so developers and agents can implement and verify behavior consistently.
 
+HTTP method and path mapping for these requirements: [`activity-manager-api.md`](./activity-manager-api.md).
+
 This version covers **functional requirements** and an initial set of **non-functional requirements**. Further NFRs and additional requirement details may be added later.
 
 ## Goals

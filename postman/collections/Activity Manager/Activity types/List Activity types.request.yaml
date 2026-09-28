@@ -1,0 +1,13 @@
+$kind: http-request
+description: |
+  AM-FR-001. Pickable catalog for the Owner in the JWT: platform defaults
+  plus that Owner's active custom types. Soft-retired types are omitted.
+url: "{{baseUrl}}/activity-types"
+method: GET
+headers:
+  Accept: application/json
+pathVariables:
+  baseUrl: "{{baseUrl}}"
+settings: {}
+examples: ./.resources/List Activity types.resources/examples
+order: 1000

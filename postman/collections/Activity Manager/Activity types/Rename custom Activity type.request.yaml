@@ -1,0 +1,26 @@
+$kind: http-request
+description: |
+  AM-FR-003. Changes `label` only. `gpsCapable` and `calorieFactor` are
+  immutable. Platform-default types are forbidden. Soft-retired types conflict.
+url: "{{baseUrl}}/activity-types/:activityTypeId"
+method: PATCH
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: activityTypeId
+    value: '{{activityTypeId}}'
+    disabled: false
+    description: "(Required) "
+  - key: baseUrl
+    value: "{{baseUrl}}"
+    description: ""
+body:
+  type: json
+  content: |-
+    {
+      "label": "Park frisbee"
+    }
+settings: {}
+examples: ./.resources/Rename custom Activity type.resources/examples
+order: 4000

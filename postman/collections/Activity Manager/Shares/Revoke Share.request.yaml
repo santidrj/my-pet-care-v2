@@ -1,0 +1,20 @@
+$kind: http-request
+description: |
+  AM-FR-013. Revokes this Share only. The Activity stays. Fails when the
+  Pet is deactivated. An already revoked Share, or a Share whose Activity
+  was hard-deleted, is `410`.
+url: "{{baseUrl}}/shares/:shareId"
+method: DELETE
+headers:
+  Accept: application/json
+pathVariables:
+  - key: shareId
+    value: '{{shareId}}'
+    disabled: false
+    description: "(Required) "
+  - key: baseUrl
+    value: "{{baseUrl}}"
+    description: ""
+settings: {}
+examples: ./.resources/Revoke Share.resources/examples
+order: 3000

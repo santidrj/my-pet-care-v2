@@ -1,0 +1,40 @@
+$kind: http-example
+name: Soft-retired Activity type blocks rename or use on an Activity.
+request:
+  url: "{{baseUrl}}/activity-types/:activityTypeId"
+  method: PATCH
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: "Added as a part of security scheme: bearer"
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: activityTypeId
+      value: <uuid>
+      disabled: false
+      description: "(Required) "
+    - key: baseUrl
+      value: "{{baseUrl}}"
+      description: ""
+  body:
+    type: json
+    content: |-
+      {
+        "label": "Park frisbee"
+      }
+response:
+  statusCode: 409
+  statusText: Conflict
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "type": "urn:my-pet-care:conflict",
+        "title": "Conflict",
+        "status": 409,
+        "detail": "The request conflicts with the current state of the resource."
+      }
+order: 6000

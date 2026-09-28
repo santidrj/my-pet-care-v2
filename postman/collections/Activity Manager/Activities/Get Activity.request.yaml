@@ -1,0 +1,18 @@
+$kind: http-request
+description: |
+  AM-FR-006. GPS Activities include `route`. Allowed when the Pet is deactivated.
+url: "{{baseUrl}}/activities/:activityId"
+method: GET
+headers:
+  Accept: application/json
+pathVariables:
+  - key: activityId
+    value: '{{activityId}}'
+    disabled: false
+    description: "(Required) "
+  - key: baseUrl
+    value: "{{baseUrl}}"
+    description: ""
+settings: {}
+examples: ./.resources/Get Activity.resources/examples
+order: 3000

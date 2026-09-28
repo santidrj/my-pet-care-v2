@@ -1,0 +1,22 @@
+$kind: http-request
+description: |
+  AM-FR-002. Creates an Owner-scoped custom Activity type. Platform
+  defaults cannot be created here.
+url: "{{baseUrl}}/activity-types"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  baseUrl: "{{baseUrl}}"
+body:
+  type: json
+  content: |-
+    {
+      "label": "Frisbee",
+      "gpsCapable": false,
+      "calorieFactor": 0.08
+    }
+settings: {}
+examples: ./.resources/Create custom Activity type.resources/examples
+order: 2000

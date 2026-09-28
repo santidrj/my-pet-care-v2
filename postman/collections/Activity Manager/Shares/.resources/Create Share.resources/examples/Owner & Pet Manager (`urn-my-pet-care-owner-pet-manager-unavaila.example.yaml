@@ -1,0 +1,44 @@
+$kind: http-example
+name: |
+  Owner & Pet Manager (`urn:my-pet-care:owner-pet-manager-unavailable`)
+  or, for a Forum or Group activity audience, the Community collaborator
+  (`urn:my-pet-care:community-collaborator-unavailable`).
+request:
+  url: "{{baseUrl}}/activities/:activityId/shares"
+  method: POST
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: "Added as a part of security scheme: bearer"
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: activityId
+      value: <uuid>
+      disabled: false
+      description: "(Required) "
+    - key: baseUrl
+      value: "{{baseUrl}}"
+      description: ""
+  body:
+    type: json
+    content: |-
+      {
+        "audience": "owner",
+        "recipientOwnerId": "55555555-5555-4555-8555-555555555555"
+      }
+response:
+  statusCode: 503
+  statusText: Service Unavailable
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "type": "urn:my-pet-care:owner-pet-manager-unavailable",
+        "title": "Service Unavailable",
+        "status": 503,
+        "detail": "Owner & Pet Manager could not be reached."
+      }
+order: 7000

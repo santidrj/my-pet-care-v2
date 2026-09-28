@@ -1,0 +1,37 @@
+$kind: http-example
+name: The Community collaborator cannot be reached, including while it does not exist.
+request:
+  url: "{{baseUrl}}/shares/:shareId"
+  method: GET
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: "Added as a part of security scheme: bearer"
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: shareId
+      value: <uuid>
+      disabled: false
+      description: "(Required) "
+    - key: baseUrl
+      value: "{{baseUrl}}"
+      description: ""
+  body:
+    type: text
+    content: ""
+response:
+  statusCode: 503
+  statusText: Service Unavailable
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "type": "urn:my-pet-care:community-collaborator-unavailable",
+        "title": "Service Unavailable",
+        "status": 503,
+        "detail": "The Community collaborator could not be reached."
+      }
+order: 6000

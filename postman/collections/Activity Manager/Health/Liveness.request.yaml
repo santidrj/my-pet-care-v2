@@ -1,0 +1,14 @@
+$kind: http-request
+description: Process liveness. Public. No Bearer JWT.
+url: '{{baseUrl}}/health'
+method: GET
+headers:
+  - key: Accept
+    value: application/json
+auth:
+  type: noauth
+pathVariables:
+  baseUrl: "{{baseUrl}}"
+settings: {}
+examples: ./.resources/Liveness.resources/examples
+order: 1000

@@ -103,8 +103,12 @@ The optional type-dependent quantity on an Activity, such as a distance or a cou
 _Avoid_: Exercise amount, measure
 
 **Calories burned**:
-The kilocalories attributed to one Activity, either system-estimated or set by an Owner override. It is not the calories-consumed Health metric.
+The kilocalories attributed to one Activity, either system-estimated or set by a Calorie override. It is not the calories-consumed Health metric.
 _Avoid_: Calories consumed, energy expenditure, calorie log
+
+**Calorie override**:
+An Owner-set Calories burned value on an Activity that replaces the system estimate until the Owner clears it. While it is set, later changes to the Activity do not replace it.
+_Avoid_: Manual calories, calorie edit
 
 **Share**:
 An Owner’s grant that one audience may read a single Activity. The audience is another Owner, a Forum, a Group activity, or anyone holding an external link. Revoking one Share leaves any other Share of that Activity in place.

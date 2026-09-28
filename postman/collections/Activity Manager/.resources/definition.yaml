@@ -1,0 +1,39 @@
+$kind: collection
+name: Activity Manager
+description: |
+  REST API for the Activity Manager service (ADR-0004).
+
+  Behavioral requirements: `docs/requirements/activity-manager.md`.
+  HTTP route map: `docs/requirements/activity-manager-api.md`.
+  OpenAPI: `postman/specs/activity-manager/openapi.yaml`.
+
+  A GPS Activity is an Activity with a route. Calorie override is its own
+  sub-resource. `GET /shares/external/:token` is a capability URL with no JWT
+  (ADR-0019). Other routes require an Owner Bearer JWT.
+  Errors are RFC 9457 Problem Details (ADR-0010, ADR-0014).
+variables:
+  - key: baseUrl
+    value: '{{baseUrl}}'
+  - key: ownerAccessToken
+    value: '{{ownerAccessToken}}'
+  - key: petId
+    value: '{{petId}}'
+  - key: activityTypeId
+    value: '{{activityTypeId}}'
+  - key: activityId
+    value: '{{activityId}}'
+  - key: shareId
+    value: '{{shareId}}'
+  - key: recipientOwnerId
+    value: '{{recipientOwnerId}}'
+  - key: externalShareToken
+    value: '{{externalShareToken}}'
+  - key: from
+    value: '{{from}}'
+  - key: to
+    value: '{{to}}'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{ownerAccessToken}}'

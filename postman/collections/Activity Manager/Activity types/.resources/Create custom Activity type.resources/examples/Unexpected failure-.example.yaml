@@ -1,0 +1,36 @@
+$kind: http-example
+name: Unexpected failure.
+request:
+  url: "{{baseUrl}}/activity-types"
+  method: POST
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: "Added as a part of security scheme: bearer"
+    - key: Accept
+      value: application/json
+  pathVariables:
+    baseUrl: "{{baseUrl}}"
+  body:
+    type: json
+    content: |-
+      {
+        "label": "Frisbee",
+        "gpsCapable": false,
+        "calorieFactor": 0.08
+      }
+response:
+  statusCode: 500
+  statusText: Internal Server Error
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "type": "urn:my-pet-care:internal-error",
+        "title": "Internal Server Error",
+        "status": 500,
+        "detail": "The service failed to handle this request."
+      }
+order: 4000

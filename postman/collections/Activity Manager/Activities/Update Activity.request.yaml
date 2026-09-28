@@ -1,0 +1,29 @@
+$kind: http-request
+description: |
+  AM-FR-007. Partial update. Does not set or clear a Calorie override.
+  Changing to a GPS-capable type requires `route` in this request.
+  A `route` when the resulting type is not GPS-capable is `400`.
+  Re-estimate runs when estimate inputs change and `calorieOverride` is false.
+url: "{{baseUrl}}/activities/:activityId"
+method: PATCH
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: activityId
+    value: '{{activityId}}'
+    disabled: false
+    description: "(Required) "
+  - key: baseUrl
+    value: "{{baseUrl}}"
+    description: ""
+body:
+  type: json
+  content: |-
+    {
+      "durationMinutes": 45,
+      "notes": "Extended loop"
+    }
+settings: {}
+examples: ./.resources/Update Activity.resources/examples
+order: 4000

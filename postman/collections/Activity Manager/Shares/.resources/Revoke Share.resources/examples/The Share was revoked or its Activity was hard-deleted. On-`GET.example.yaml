@@ -1,0 +1,39 @@
+$kind: http-example
+name: |
+  The Share was revoked or its Activity was hard-deleted. On
+  `GET /shares/external/{token}` this is also the response for an unknown token.
+request:
+  url: "{{baseUrl}}/shares/:shareId"
+  method: DELETE
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: "Added as a part of security scheme: bearer"
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: shareId
+      value: <uuid>
+      disabled: false
+      description: "(Required) "
+    - key: baseUrl
+      value: "{{baseUrl}}"
+      description: ""
+  body:
+    type: text
+    content: ""
+response:
+  statusCode: 410
+  statusText: Gone
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "type": "urn:my-pet-care:share-unavailable",
+        "title": "Gone",
+        "status": 410,
+        "detail": "This share is no longer available."
+      }
+order: 5000

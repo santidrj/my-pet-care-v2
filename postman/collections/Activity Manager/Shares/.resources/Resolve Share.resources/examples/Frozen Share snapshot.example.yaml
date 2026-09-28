@@ -1,0 +1,51 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/shares/:shareId"
+  method: GET
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: "Added as a part of security scheme: bearer"
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: shareId
+      value: <uuid>
+      disabled: false
+      description: "(Required) "
+    - key: baseUrl
+      value: "{{baseUrl}}"
+      description: ""
+  body:
+    type: text
+    content: ""
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "petDisplayName": "Nori",
+        "activityTypeLabel": "Walk",
+        "timestamp": "2026-09-28T08:30:00.000Z",
+        "durationMinutes": 30,
+        "caloriesBurned": 86,
+        "activityAmount": 2.4,
+        "notes": "Morning loop",
+        "route": {
+          "points": [
+            {
+              "latitude": 41.39,
+              "longitude": 2.17
+            },
+            {
+              "latitude": 41.4,
+              "longitude": 2.18
+            }
+          ]
+        }
+      }
+order: 1000

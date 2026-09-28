@@ -1,0 +1,29 @@
+$kind: http-request
+description: |
+  AM-FR-006. `from` and `to` are required ISO-8601 instants. The filter
+  uses the Activity timestamp and includes both ends. Results are
+  timestamp descending. Allowed when the Pet is deactivated.
+url: '{{baseUrl}}/pets/:petId/activities'
+method: GET
+headers:
+  Accept: application/json
+queryParams:
+  - key: from
+    value: '{{from}}'
+    disabled: false
+    description: (Required) Inclusive start of the Activity timestamp range.
+  - key: to
+    value: '{{to}}'
+    disabled: false
+    description: (Required) Inclusive end of the Activity timestamp range. Must be greater than or equal to `from`.
+pathVariables:
+  - key: petId
+    value: '{{petId}}'
+    disabled: false
+    description: (Required) Pet id from Owner & Pet Manager.
+  - key: baseUrl
+    value: "{{baseUrl}}"
+    description: ""
+settings: {}
+examples: ./.resources/List Activities.resources/examples
+order: 2000

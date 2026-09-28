@@ -1,0 +1,23 @@
+$kind: http-request
+description: |
+  AM-FR-012. Public capability URL (ADR-0019). `{token}` is the secret,
+  not the share id. Unknown, revoked, and hard-deleted all return the
+  same `410`.
+url: "{{baseUrl}}/shares/external/:token"
+method: GET
+headers:
+  - key: Accept
+    value: application/json
+auth:
+  type: noauth
+pathVariables:
+  - key: token
+    value: '{{externalShareToken}}'
+    disabled: false
+    description: (Required) Secret capability token. Not the share id.
+  - key: baseUrl
+    value: "{{baseUrl}}"
+    description: ""
+settings: {}
+examples: ./.resources/Resolve external Share.resources/examples
+order: 4000

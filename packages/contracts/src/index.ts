@@ -64,3 +64,45 @@ export const communityCheckUnavailableProblem = {
   status: 409,
   detail: "Owner deactivation could not be completed.",
 } as const satisfies ProblemDetails;
+
+export const petDeactivatedProblem = {
+  type: "urn:my-pet-care:pet-deactivated",
+  title: "Conflict",
+  status: 409,
+  detail: "This Pet is deactivated.",
+} as const satisfies ProblemDetails;
+
+export const latestWeightMissingProblem = {
+  type: "urn:my-pet-care:latest-weight-missing",
+  title: "Conflict",
+  status: 409,
+  detail: "This Pet has no latest weight.",
+} as const satisfies ProblemDetails;
+
+export const shareUnavailableProblem = {
+  type: "urn:my-pet-care:share-unavailable",
+  title: "Gone",
+  status: 410,
+  detail: "This share is no longer available.",
+} as const satisfies ProblemDetails;
+
+export const ownerPetManagerUnavailableProblem = {
+  type: "urn:my-pet-care:owner-pet-manager-unavailable",
+  title: "Service Unavailable",
+  status: 503,
+  detail: "Owner & Pet Manager could not be reached.",
+} as const satisfies ProblemDetails;
+
+export const petHealthUnavailableProblem = {
+  type: "urn:my-pet-care:pet-health-unavailable",
+  title: "Service Unavailable",
+  status: 503,
+  detail: "Pet Health Service could not be reached.",
+} as const satisfies ProblemDetails;
+
+export const communityCollaboratorUnavailableProblem = {
+  type: "urn:my-pet-care:community-collaborator-unavailable",
+  title: "Service Unavailable",
+  status: 503,
+  detail: "The Community collaborator could not be reached.",
+} as const satisfies ProblemDetails;

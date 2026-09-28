@@ -1,0 +1,31 @@
+$kind: http-request
+description: |
+  AM-FR-010, AM-FR-011, AM-FR-012. One body names the audience. Each
+  success creates a new Share, including a second Share to the same
+  audience. An external Share returns `link` and `summary`. The Community
+  itself and a Shared location are not audiences. Fails when the Pet is
+  deactivated. A Forum or Group activity Share fails closed when the
+  Community collaborator cannot be reached.
+url: "{{baseUrl}}/activities/:activityId/shares"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: activityId
+    value: '{{activityId}}'
+    disabled: false
+    description: "(Required) "
+  - key: baseUrl
+    value: "{{baseUrl}}"
+    description: ""
+body:
+  type: json
+  content: |-
+    {
+      "audience": "owner",
+      "recipientOwnerId": "{{recipientOwnerId}}"
+    }
+settings: {}
+examples: ./.resources/Create Share.resources/examples
+order: 1000

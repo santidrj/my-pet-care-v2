@@ -1,0 +1,52 @@
+name: Activity Manager Local
+values:
+  - key: baseUrl
+    value: http://localhost:3003
+    enabled: true
+    type: default
+    description: Activity Manager base URL (local default port 3003)
+  - key: ownerAccessToken
+    value: ''
+    enabled: true
+    type: secret
+    description: Owner Bearer JWT. Leave empty until Authentication Service issues a token.
+  - key: petId
+    value: ''
+    enabled: true
+    type: default
+    description: Pet id from Owner & Pet Manager
+  - key: activityTypeId
+    value: ''
+    enabled: true
+    type: default
+    description: Activity type id returned on create or list
+  - key: activityId
+    value: ''
+    enabled: true
+    type: default
+    description: Activity id returned on create
+  - key: shareId
+    value: ''
+    enabled: true
+    type: default
+    description: Share id returned on create
+  - key: recipientOwnerId
+    value: ''
+    enabled: true
+    type: default
+    description: Recipient Owner id for an in-platform Owner Share
+  - key: externalShareToken
+    value: ''
+    enabled: true
+    type: secret
+    description: Capability token from an external Share link. Not the share id.
+  - key: from
+    value: '2026-09-01T00:00:00.000Z'
+    enabled: true
+    type: default
+    description: Inclusive start of the Activity list range
+  - key: to
+    value: '2026-09-30T23:59:59.000Z'
+    enabled: true
+    type: default
+    description: Inclusive end of the Activity list range

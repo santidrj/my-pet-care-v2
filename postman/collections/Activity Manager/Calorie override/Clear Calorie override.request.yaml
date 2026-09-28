@@ -1,0 +1,20 @@
+$kind: http-request
+description: |
+  AM-FR-008. Clears the override and re-estimates from duration, latest
+  weight, and the Activity type calorie factor. Response is the Activity.
+  Fails closed when latest weight is empty or Pet Health cannot be reached.
+url: "{{baseUrl}}/activities/:activityId/calorie-override"
+method: DELETE
+headers:
+  Accept: application/json
+pathVariables:
+  - key: activityId
+    value: '{{activityId}}'
+    disabled: false
+    description: "(Required) "
+  - key: baseUrl
+    value: "{{baseUrl}}"
+    description: ""
+settings: {}
+examples: ./.resources/Clear Calorie override.resources/examples
+order: 2000

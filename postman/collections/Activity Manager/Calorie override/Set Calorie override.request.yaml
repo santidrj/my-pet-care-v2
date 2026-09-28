@@ -1,0 +1,26 @@
+$kind: http-request
+description: |
+  AM-FR-008. Sets an explicit Calories burned value. Later Activity
+  updates do not replace it. Response is the Activity.
+url: "{{baseUrl}}/activities/:activityId/calorie-override"
+method: PUT
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: activityId
+    value: '{{activityId}}'
+    disabled: false
+    description: "(Required) "
+  - key: baseUrl
+    value: "{{baseUrl}}"
+    description: ""
+body:
+  type: json
+  content: |-
+    {
+      "caloriesBurned": 120
+    }
+settings: {}
+examples: ./.resources/Set Calorie override.resources/examples
+order: 1000

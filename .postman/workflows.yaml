@@ -8,3 +8,7 @@ workflows:
       collection: ../postman/collections/Authentication Service
       options:
         folderStrategy: Tags
+    - spec: ../postman/specs/activity-manager/openapi.yaml
+      collection: ../postman/collections/Activity Manager
+      options:
+        folderStrategy: Tags

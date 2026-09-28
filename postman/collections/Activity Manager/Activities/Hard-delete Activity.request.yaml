@@ -1,0 +1,20 @@
+$kind: http-request
+description: |
+  AM-FR-009. Permanent. Allowed when the Pet is deactivated. Shares of
+  this Activity then resolve as no longer available. Fails closed when
+  the activity-duration sync cannot be completed.
+url: "{{baseUrl}}/activities/:activityId"
+method: DELETE
+headers:
+  Accept: application/json
+pathVariables:
+  - key: activityId
+    value: '{{activityId}}'
+    disabled: false
+    description: "(Required) "
+  - key: baseUrl
+    value: "{{baseUrl}}"
+    description: ""
+settings: {}
+examples: ./.resources/Hard-delete Activity.resources/examples
+order: 5000

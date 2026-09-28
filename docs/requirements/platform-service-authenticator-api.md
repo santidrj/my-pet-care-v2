@@ -69,7 +69,7 @@ Platform-wide source of truth for routes that skip JWT verification ([PSA-FR-003
 | `POST` | `/auth/password-reset/complete` | Authentication Service | [AUTH-FR-005](./authentication-service.md#auth-fr-005--complete-password-reset) |
 | `POST` | `/oauth/token` | Authentication Service | [AUTH-FR-007](./authentication-service.md#auth-fr-007--platform-client-credentials-grant) |
 | `POST` | `/owners` | Owner & Pet Manager | [OPM-FR-001](./owner-pet-manager.md#opm-fr-001--create-owner) — Create Owner (ADR-0015) |
-| `GET` | `/shares/external/{token}` | Activity Manager | [AM-FR-012](./activity-manager.md#am-fr-012--create-external-share-and-resolve-shares) — provisional path until `activity-manager-api.md` exists; capability URL, no JWT |
+| `GET` | `/shares/external/{token}` | Activity Manager | [AM-FR-012](./activity-manager.md#am-fr-012--create-external-share-and-resolve-shares) — [`activity-manager-api.md`](./activity-manager-api.md#shares); capability URL, no JWT (ADR-0019) |
 | `GET` | `/health` | Authentication Service | Liveness `{ "status": "ok" }` (ADR-0014) |
 | `GET` | `/health` | Owner & Pet Manager | same |
 | `GET` | `/health` | Pet Health Service | same |

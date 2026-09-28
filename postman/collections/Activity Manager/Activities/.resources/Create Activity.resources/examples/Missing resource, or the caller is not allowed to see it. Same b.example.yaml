@@ -1,0 +1,58 @@
+$kind: http-example
+name: |
+  Missing resource, or the caller is not allowed to see it. Same body
+  either way (`urn:my-pet-care:resource-not-found`).
+request:
+  url: "{{baseUrl}}/pets/:petId/activities"
+  method: POST
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: "Added as a part of security scheme: bearer"
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: petId
+      value: <uuid>
+      disabled: false
+      description: (Required) Pet id from Owner & Pet Manager.
+    - key: baseUrl
+      value: "{{baseUrl}}"
+      description: ""
+  body:
+    type: json
+    content: |-
+      {
+        "activityTypeId": "11111111-1111-4111-8111-111111111111",
+        "timestamp": "2026-09-28T08:30:00.000Z",
+        "durationMinutes": 30,
+        "activityAmount": 2.4,
+        "notes": "Morning loop",
+        "route": {
+          "points": [
+            {
+              "latitude": 41.39,
+              "longitude": 2.17
+            },
+            {
+              "latitude": 41.4,
+              "longitude": 2.18
+            }
+          ]
+        }
+      }
+response:
+  statusCode: 404
+  statusText: Not Found
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "type": "urn:my-pet-care:resource-not-found",
+        "title": "Not Found",
+        "status": 404,
+        "detail": "The requested resource was not found."
+      }
+order: 4000
