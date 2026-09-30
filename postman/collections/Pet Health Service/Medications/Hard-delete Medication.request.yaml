@@ -1,0 +1,24 @@
+$kind: http-request
+description: PHS-FR-015. Permanent.
+url: '{{baseUrl}}/medications/:medicationId'
+method: DELETE
+headers:
+  Accept: application/json
+pathVariables:
+  - key: medicationId
+    value: '{{medicationId}}'
+    disabled: false
+    description: (Required) Medication id returned on create.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 204', function () {
+        pm.response.to.have.status(204);
+      });
+examples: ./.resources/Hard-delete Medication.resources/examples
+order: 5000

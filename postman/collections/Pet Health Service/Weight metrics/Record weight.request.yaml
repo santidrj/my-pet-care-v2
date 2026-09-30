@@ -1,0 +1,53 @@
+$kind: http-request
+description: |
+  PHS-FR-002. Appends a weight Health metric. Latest weight becomes the
+  remaining weight metric with the latest timestamp, which may be an older
+  reading when this one is backdated. With no override in effect,
+  recommended daily kilocalories is derived again. An unexpected species
+  from Owner & Pet Manager is `500` and nothing is recorded.
+url: '{{baseUrl}}/pets/:petId/weight-metrics'
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: petId
+    value: '{{petId}}'
+    disabled: false
+    description: (Required) Pet id from Owner & Pet Manager.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+body:
+  type: json
+  content: |-
+    {
+      "weightKg": 12.4,
+      "timestamp": "2026-09-28T07:45:00.000Z"
+    }
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      function persist(key, value) {
+        if (value === undefined || value === null || value === '') {
+          return;
+        }
+        pm.collectionVariables.set(key, String(value));
+        pm.environment.set(key, String(value));
+      }
+
+      pm.test('HTTP status is 201', function () {
+        pm.response.to.have.status(201);
+      });
+      if (pm.response.code !== 201) {
+        return;
+      }
+      pm.test('response includes an id', function () {
+        const body = pm.response.json();
+        pm.expect(body.id).to.be.a('string').and.not.empty;
+        persist('weightMetricId', body.id);
+      });
+examples: ./.resources/Record weight.resources/examples
+order: 1000

@@ -1,0 +1,40 @@
+$kind: http-example
+request:
+  url: '{{baseUrl}}/pets/:petId/washes'
+  method: POST
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: 'Added as a part of security scheme: bearer'
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: petId
+      value: <uuid>
+      disabled: false
+      description: (Required) Pet id from Owner & Pet Manager.
+    - key: baseUrl
+      value: '{{baseUrl}}'
+      description: ''
+  body:
+    type: json
+    content: |-
+      {
+        "timestamp": "2026-10-01T17:00:00.000Z",
+        "notes": "Oatmeal shampoo"
+      }
+response:
+  statusCode: 201
+  statusText: Created
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "id": "77777777-7777-4777-8777-777777777777",
+        "petId": "44444444-4444-4444-8444-444444444444",
+        "timestamp": "2026-10-01T17:00:00.000Z",
+        "notes": "Oatmeal shampoo"
+      }
+order: 1000

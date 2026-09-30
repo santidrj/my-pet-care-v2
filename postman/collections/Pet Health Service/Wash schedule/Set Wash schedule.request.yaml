@@ -1,0 +1,35 @@
+$kind: http-request
+description: |
+  PHS-FR-010. Creates the Pet's Wash schedule. `startDate` must be on or
+  after the current UTC date. A schedule that already exists is `409`
+  `conflict`; change it with `PATCH`.
+url: '{{baseUrl}}/pets/:petId/wash-schedule'
+method: PUT
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: petId
+    value: '{{petId}}'
+    disabled: false
+    description: (Required) Pet id from Owner & Pet Manager.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+body:
+  type: json
+  content: |-
+    {
+      "startDate": "2026-10-01",
+      "intervalDays": 14
+    }
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 201', function () {
+        pm.response.to.have.status(201);
+      });
+examples: ./.resources/Set Wash schedule.resources/examples
+order: 1000

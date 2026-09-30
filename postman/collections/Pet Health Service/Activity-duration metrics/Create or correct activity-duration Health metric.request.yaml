@@ -1,0 +1,45 @@
+$kind: http-request
+description: |
+  PHS-FR-016. Activity Manager only (platform JWT with `service`
+  `activity-manager`). Any other caller, including an Owner, is `403`.
+  Creates the metric for this Activity (`201`) or corrects it (`200`), so
+  a retry is safe. A `petId` that differs from the stored one is `409`
+  `conflict`. Fails when the Pet is missing (`404`) or deactivated (`409`
+  `pet-deactivated`).
+url: '{{baseUrl}}/activity-duration-metrics/:activityId'
+method: PUT
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: activityId
+    value: '{{activityId}}'
+    disabled: false
+    description: (Required) Activity id from Activity Manager. Also the id of its activity-duration Health
+      metric.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+body:
+  type: json
+  content: |-
+    {
+      "petId": "{{petId}}",
+      "durationMinutes": 30,
+      "timestamp": "2026-09-28T08:30:00.000Z"
+    }
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{platformAccessToken}}'
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200 or 201', function () {
+        pm.expect(pm.response.code).to.be.oneOf([200, 201]);
+      });
+examples: ./.resources/Create or correct activity-duration Health metric.resources/examples
+order: 1000

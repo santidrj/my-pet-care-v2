@@ -1,0 +1,2466 @@
+openapi: 3.1.0
+info:
+  title: Pet Health Service
+  version: 0.1.0
+  description: |
+    REST API for the Pet Health Service (ADR-0004).
+
+    Behavioral requirements: `docs/requirements/pet-health-service.md`.
+    HTTP route map: `docs/requirements/pet-health-service-api.md`.
+
+    Calories-consumed and activity-duration Health metrics use the id of the
+    Meal or Activity they come from (ADR-0024). Activity Manager writes
+    activity-duration metrics with a platform JWT. Errors use RFC 9457
+    Problem Details (ADR-0010, ADR-0014). At runtime the error Content-Type
+    is `application/problem+json`; this OpenAPI file documents those bodies
+    under `application/json` so Postman lint accepts the media type.
+servers:
+  - url: '{baseUrl}'
+    description: Local or deployed Pet Health Service base URL
+    variables:
+      baseUrl:
+        default: http://localhost:3002
+tags:
+  - name: Health
+    description: Process liveness (not a PHS-FR)
+  - name: Health profile
+    description: Latest weight and recommended daily kilocalories
+  - name: Weight metrics
+    description: Weight Health metrics the Owner records
+  - name: Calories-consumed metrics
+    description: Calories-consumed Health metrics written through Meals
+  - name: Activity-duration metrics
+    description: Activity-duration Health metrics written by Activity Manager
+  - name: Meals
+    description: Meals and kilocalories eaten
+  - name: Washes
+    description: Completed Washes
+  - name: Wash schedule
+    description: Wash schedule and next due
+  - name: Medical record
+    description: Read-only view of Vet visits and Medications
+  - name: Vet visits
+    description: Vet visits for a Pet
+  - name: Medications
+    description: Medication courses for a Pet
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      operationId: getHealth
+      summary: Liveness
+      description: Public process liveness. No Bearer JWT. Not a PHS-FR.
+      security: []
+      responses:
+        '200':
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+              example:
+                status: ok
+  /pets/{petId}/health-profile:
+    parameters:
+      - $ref: '#/components/parameters/PetId'
+    get:
+      tags:
+        - Health profile
+      operationId: getHealthProfile
+      summary: Get Health profile
+      description: |
+        PHS-FR-001. Callable by the Pet's Owner or by Activity Manager (platform
+        JWT with `service` `activity-manager`) for latest-weight reads. Both
+        fields are always present and `null` when empty. Allowed when the Pet is
+        deactivated. Any other platform service is `403`.
+      responses:
+        '200':
+          description: Health profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthProfile'
+              example:
+                petId: 44444444-4444-4444-8444-444444444444
+                latestWeightKg: 12.4
+                recommendedDailyKilocalories: 740
+                recommendedDailyKilocaloriesOverridden: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /pets/{petId}/health-profile/recommended-daily-kilocalories-override:
+    parameters:
+      - $ref: '#/components/parameters/PetId'
+    put:
+      tags:
+        - Health profile
+      operationId: setRecommendedDailyKilocaloriesOverride
+      summary: Set recommended daily kilocalories override
+      description: |
+        PHS-FR-006. Replaces the derived value, or an earlier override, until
+        the Owner clears it. Later weight changes do not change it. Response is
+        the Health profile.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetRecommendedDailyKilocaloriesOverrideRequest'
+            example:
+              value: 650
+      responses:
+        '200':
+          description: Override set. Body is the Health profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthProfile'
+              example:
+                petId: 44444444-4444-4444-8444-444444444444
+                latestWeightKg: 12.4
+                recommendedDailyKilocalories: 650
+                recommendedDailyKilocaloriesOverridden: true
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/PetDeactivated'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags:
+        - Health profile
+      operationId: clearRecommendedDailyKilocaloriesOverride
+      summary: Clear recommended daily kilocalories override
+      description: |
+        PHS-FR-005 and PHS-FR-006. Removes the override and derives the value
+        from the current latest weight and species. The value is `null` when
+        latest weight is empty. Clearing when no override is in effect succeeds
+        unchanged. An unexpected species from Owner & Pet Manager is `500`.
+        Response is the Health profile.
+      responses:
+        '200':
+          description: Override cleared. Body is the Health profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthProfile'
+              example:
+                petId: 44444444-4444-4444-8444-444444444444
+                latestWeightKg: 12.4
+                recommendedDailyKilocalories: 740
+                recommendedDailyKilocaloriesOverridden: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/PetDeactivated'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /pets/{petId}/weight-metrics:
+    parameters:
+      - $ref: '#/components/parameters/PetId'
+    post:
+      tags:
+        - Weight metrics
+      operationId: recordWeight
+      summary: Record weight
+      description: |
+        PHS-FR-002. Appends a weight Health metric. Latest weight becomes the
+        remaining weight metric with the latest timestamp, which may be an older
+        reading when this one is backdated. With no override in effect,
+        recommended daily kilocalories is derived again. An unexpected species
+        from Owner & Pet Manager is `500` and nothing is recorded.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWeightMetricRequest'
+            example:
+              weightKg: 12.4
+              timestamp: '2026-09-28T07:45:00.000Z'
+      responses:
+        '201':
+          description: Weight Health metric recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeightMetric'
+              example:
+                id: 55555555-5555-4555-8555-555555555555
+                petId: 44444444-4444-4444-8444-444444444444
+                weightKg: 12.4
+                timestamp: '2026-09-28T07:45:00.000Z'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/PetDeactivated'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      tags:
+        - Weight metrics
+      operationId: listWeightMetrics
+      summary: List weight Health metrics
+      description: |
+        PHS-FR-003. Optional `from` and `to` filter on the metric timestamp and
+        include both ends. Results are timestamp descending. Allowed when the Pet
+        is deactivated.
+      parameters:
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200':
+          description: Weight Health metrics. Empty `items` when none match.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeightMetricList'
+              example:
+                items:
+                  - id: 55555555-5555-4555-8555-555555555555
+                    petId: 44444444-4444-4444-8444-444444444444
+                    weightKg: 12.4
+                    timestamp: '2026-09-28T07:45:00.000Z'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /weight-metrics/{metricId}:
+    parameters:
+      - $ref: '#/components/parameters/WeightMetricId'
+    get:
+      tags:
+        - Weight metrics
+      operationId: getWeightMetric
+      summary: Get weight Health metric
+      description: PHS-FR-003. Allowed when the Pet is deactivated.
+      responses:
+        '200':
+          description: Weight Health metric found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeightMetric'
+              example:
+                id: 55555555-5555-4555-8555-555555555555
+                petId: 44444444-4444-4444-8444-444444444444
+                weightKg: 12.4
+                timestamp: '2026-09-28T07:45:00.000Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags:
+        - Weight metrics
+      operationId: correctWeightMetric
+      summary: Correct weight Health metric
+      description: |
+        PHS-FR-004. Partial update of `weightKg` and `timestamp`. Latest weight
+        and, with no override in effect, recommended daily kilocalories are
+        derived again.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWeightMetricRequest'
+            example:
+              weightKg: 12.2
+      responses:
+        '200':
+          description: Weight Health metric corrected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeightMetric'
+              example:
+                id: 55555555-5555-4555-8555-555555555555
+                petId: 44444444-4444-4444-8444-444444444444
+                weightKg: 12.2
+                timestamp: '2026-09-28T07:45:00.000Z'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/PetDeactivated'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags:
+        - Weight metrics
+      operationId: deleteWeightMetric
+      summary: Hard-delete weight Health metric
+      description: |
+        PHS-FR-004. Hard delete. Latest weight and, with no override in effect,
+        recommended daily kilocalories are derived again, and are `null` when no
+        weight metric remains.
+      responses:
+        '204':
+          description: Weight Health metric deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/PetDeactivated'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /pets/{petId}/calories-consumed-metrics:
+    parameters:
+      - $ref: '#/components/parameters/PetId'
+    get:
+      tags:
+        - Calories-consumed metrics
+      operationId: listCaloriesConsumedMetrics
+      summary: List calories-consumed Health metrics
+      description: |
+        PHS-FR-017. Read-only. Meals are the only write path. Optional `from` and
+        `to` filter on the metric timestamp and include both ends. Results are
+        timestamp descending. Allowed when the Pet is deactivated.
+      parameters:
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200':
+          description: Calories-consumed Health metrics. Empty `items` when none match.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaloriesConsumedMetricList'
+              example:
+                items:
+                  - id: 66666666-6666-4666-8666-666666666666
+                    petId: 44444444-4444-4444-8444-444444444444
+                    kilocalories: 320
+                    timestamp: '2026-09-28T07:30:00.000Z'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /calories-consumed-metrics/{mealId}:
+    parameters:
+      - $ref: '#/components/parameters/MealId'
+    get:
+      tags:
+        - Calories-consumed metrics
+      operationId: getCaloriesConsumedMetric
+      summary: Get calories-consumed Health metric
+      description: |
+        PHS-FR-017. The metric id is its Meal's id (ADR-0024). Allowed when the
+        Pet is deactivated.
+      responses:
+        '200':
+          description: Calories-consumed Health metric found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaloriesConsumedMetric'
+              example:
+                id: 66666666-6666-4666-8666-666666666666
+                petId: 44444444-4444-4444-8444-444444444444
+                kilocalories: 320
+                timestamp: '2026-09-28T07:30:00.000Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /pets/{petId}/activity-duration-metrics:
+    parameters:
+      - $ref: '#/components/parameters/PetId'
+    get:
+      tags:
+        - Activity-duration metrics
+      operationId: listActivityDurationMetrics
+      summary: List activity-duration Health metrics
+      description: |
+        PHS-FR-016. Owner read. Optional `from` and `to` filter on the metric
+        timestamp and include both ends. Results are timestamp descending.
+        Allowed when the Pet is deactivated.
+      parameters:
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200':
+          description: Activity-duration Health metrics. Empty `items` when none match.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityDurationMetricList'
+              example:
+                items:
+                  - id: 33333333-3333-4333-8333-333333333333
+                    petId: 44444444-4444-4444-8444-444444444444
+                    durationMinutes: 30
+                    timestamp: '2026-09-28T08:30:00.000Z'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /activity-duration-metrics/{activityId}:
+    parameters:
+      - $ref: '#/components/parameters/ActivityId'
+    get:
+      tags:
+        - Activity-duration metrics
+      operationId: getActivityDurationMetric
+      summary: Get activity-duration Health metric
+      description: |
+        PHS-FR-016. Owner read. The metric id is its Activity's id (ADR-0024).
+        Allowed when the Pet is deactivated.
+      responses:
+        '200':
+          description: Activity-duration Health metric found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityDurationMetric'
+              example:
+                id: 33333333-3333-4333-8333-333333333333
+                petId: 44444444-4444-4444-8444-444444444444
+                durationMinutes: 30
+                timestamp: '2026-09-28T08:30:00.000Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags:
+        - Activity-duration metrics
+      operationId: syncActivityDurationMetric
+      summary: Create or correct activity-duration Health metric
+      description: |
+        PHS-FR-016. Activity Manager only (platform JWT with `service`
+        `activity-manager`). Any other caller, including an Owner, is `403`.
+        Creates the metric for this Activity (`201`) or corrects it (`200`), so
+        a retry is safe. A `petId` that differs from the stored one is `409`
+        `conflict`. Fails when the Pet is missing (`404`) or deactivated (`409`
+        `pet-deactivated`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncActivityDurationMetricRequest'
+            example:
+              petId: 44444444-4444-4444-8444-444444444444
+              durationMinutes: 30
+              timestamp: '2026-09-28T08:30:00.000Z'
+      responses:
+        '200':
+          description: Activity-duration Health metric corrected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityDurationMetric'
+              example:
+                id: 33333333-3333-4333-8333-333333333333
+                petId: 44444444-4444-4444-8444-444444444444
+                durationMinutes: 30
+                timestamp: '2026-09-28T08:30:00.000Z'
+        '201':
+          description: Activity-duration Health metric created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityDurationMetric'
+              example:
+                id: 33333333-3333-4333-8333-333333333333
+                petId: 44444444-4444-4444-8444-444444444444
+                durationMinutes: 30
+                timestamp: '2026-09-28T08:30:00.000Z'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          description: |
+            The metric belongs to a different Pet (`urn:my-pet-care:conflict`), or
+            the Pet is deactivated (`urn:my-pet-care:pet-deactivated`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                petMismatch:
+                  summary: Stored metric belongs to a different Pet
+                  value:
+                    type: urn:my-pet-care:conflict
+                    title: Conflict
+                    status: 409
+                    detail: The request conflicts with the current state of the resource.
+                petDeactivated:
+                  summary: Pet is deactivated
+                  value:
+                    type: urn:my-pet-care:pet-deactivated
+                    title: Conflict
+                    status: 409
+                    detail: This Pet is deactivated.
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags:
+        - Activity-duration metrics
+      operationId: deleteActivityDurationMetric
+      summary: Hard-delete activity-duration Health metric
+      description: |
+        PHS-FR-016. Activity Manager only. Any other caller, including an Owner,
+        is `403`. Succeeds when the Pet is deactivated. No metric for this
+        Activity is `404`.
+      responses:
+        '204':
+          description: Activity-duration Health metric deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /pets/{petId}/meals:
+    parameters:
+      - $ref: '#/components/parameters/PetId'
+    post:
+      tags:
+        - Meals
+      operationId: createMeal
+      summary: Create Meal
+      description: |
+        PHS-FR-007. Registers a Meal and its calories-consumed Health metric
+        (same kilocalories and timestamp, id equal to the Meal id). `brand`,
+        `labels`, and `notes` are optional.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMealRequest'
+            example:
+              foodName: Chicken and rice kibble
+              kilocalories: 320
+              timestamp: '2026-09-28T07:30:00.000Z'
+              brand: Acme Pet Foods
+              labels:
+                - dry
+                - breakfast
+              notes: Ate everything
+      responses:
+        '201':
+          description: Meal created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meal'
+              example:
+                id: 66666666-6666-4666-8666-666666666666
+                petId: 44444444-4444-4444-8444-444444444444
+                foodName: Chicken and rice kibble
+                kilocalories: 320
+                timestamp: '2026-09-28T07:30:00.000Z'
+                brand: Acme Pet Foods
+                labels:
+                  - dry
+                  - breakfast
+                notes: Ate everything
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/PetDeactivated'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      tags:
+        - Meals
+      operationId: listMeals
+      summary: List Meals
+      description: |
+        PHS-FR-008. Optional `from` and `to` filter on the Meal timestamp and
+        include both ends. Results are timestamp descending. Allowed when the Pet
+        is deactivated.
+      parameters:
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200':
+          description: Meals. Empty `items` when none match.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MealList'
+              example:
+                items:
+                  - id: 66666666-6666-4666-8666-666666666666
+                    petId: 44444444-4444-4444-8444-444444444444
+                    foodName: Chicken and rice kibble
+                    kilocalories: 320
+                    timestamp: '2026-09-28T07:30:00.000Z'
+                    brand: Acme Pet Foods
+                    labels:
+                      - dry
+                      - breakfast
+                    notes: Ate everything
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /meals/{mealId}:
+    parameters:
+      - $ref: '#/components/parameters/MealId'
+    get:
+      tags:
+        - Meals
+      operationId: getMeal
+      summary: Get Meal
+      description: PHS-FR-008. Allowed when the Pet is deactivated.
+      responses:
+        '200':
+          description: Meal found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meal'
+              example:
+                id: 66666666-6666-4666-8666-666666666666
+                petId: 44444444-4444-4444-8444-444444444444
+                foodName: Chicken and rice kibble
+                kilocalories: 320
+                timestamp: '2026-09-28T07:30:00.000Z'
+                brand: Acme Pet Foods
+                labels:
+                  - dry
+                  - breakfast
+                notes: Ate everything
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags:
+        - Meals
+      operationId: updateMeal
+      summary: Update Meal
+      description: |
+        PHS-FR-008. Partial update. The calories-consumed Health metric takes the
+        Meal's kilocalories and timestamp.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMealRequest'
+            example:
+              kilocalories: 280
+              notes: Left a few pieces
+      responses:
+        '200':
+          description: Meal updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meal'
+              example:
+                id: 66666666-6666-4666-8666-666666666666
+                petId: 44444444-4444-4444-8444-444444444444
+                foodName: Chicken and rice kibble
+                kilocalories: 280
+                timestamp: '2026-09-28T07:30:00.000Z'
+                brand: Acme Pet Foods
+                labels:
+                  - dry
+                  - breakfast
+                notes: Left a few pieces
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/PetDeactivated'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags:
+        - Meals
+      operationId: deleteMeal
+      summary: Hard-delete Meal
+      description: |
+        PHS-FR-008. Permanent. The calories-consumed Health metric is deleted
+        with it, and the Meal leaves kilocalories-eaten sums.
+      responses:
+        '204':
+          description: Meal hard-deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/PetDeactivated'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /pets/{petId}/kilocalories-eaten:
+    parameters:
+      - $ref: '#/components/parameters/PetId'
+    get:
+      tags:
+        - Meals
+      operationId: getKilocaloriesEaten
+      summary: Get kilocalories eaten
+      description: |
+        PHS-FR-009. Sum of Meal kilocalories with a timestamp in `from`–`to`,
+        both ends inclusive. Both are required. There is no "today" mode. An
+        empty range is `0`. Allowed when the Pet is deactivated.
+      parameters:
+        - $ref: '#/components/parameters/RangeFrom'
+        - $ref: '#/components/parameters/RangeTo'
+      responses:
+        '200':
+          description: Kilocalories eaten in the range
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KilocaloriesEaten'
+              example:
+                from: '2026-09-28T00:00:00.000Z'
+                to: '2026-09-28T23:59:59.999Z'
+                kilocalories: 640
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /pets/{petId}/washes:
+    parameters:
+      - $ref: '#/components/parameters/PetId'
+    post:
+      tags:
+        - Washes
+      operationId: createWash
+      summary: Register Wash
+      description: |
+        PHS-FR-011. Registers a completed Wash. `notes` is optional. Allowed when
+        no Wash schedule is set.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWashRequest'
+            example:
+              timestamp: '2026-10-01T17:00:00.000Z'
+              notes: Oatmeal shampoo
+      responses:
+        '201':
+          description: Wash registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wash'
+              example:
+                id: 77777777-7777-4777-8777-777777777777
+                petId: 44444444-4444-4444-8444-444444444444
+                timestamp: '2026-10-01T17:00:00.000Z'
+                notes: Oatmeal shampoo
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/PetDeactivated'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      tags:
+        - Washes
+      operationId: listWashes
+      summary: List Washes
+      description: |
+        PHS-FR-011. Optional `from` and `to` filter on the Wash timestamp and
+        include both ends. Results are timestamp descending. Allowed when the Pet
+        is deactivated.
+      parameters:
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200':
+          description: Washes. Empty `items` when none match.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WashList'
+              example:
+                items:
+                  - id: 77777777-7777-4777-8777-777777777777
+                    petId: 44444444-4444-4444-8444-444444444444
+                    timestamp: '2026-10-01T17:00:00.000Z'
+                    notes: Oatmeal shampoo
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /washes/{washId}:
+    parameters:
+      - $ref: '#/components/parameters/WashId'
+    get:
+      tags:
+        - Washes
+      operationId: getWash
+      summary: Get Wash
+      description: PHS-FR-011. Allowed when the Pet is deactivated.
+      responses:
+        '200':
+          description: Wash found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wash'
+              example:
+                id: 77777777-7777-4777-8777-777777777777
+                petId: 44444444-4444-4444-8444-444444444444
+                timestamp: '2026-10-01T17:00:00.000Z'
+                notes: Oatmeal shampoo
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags:
+        - Washes
+      operationId: updateWash
+      summary: Update Wash
+      description: PHS-FR-011. Partial update of `timestamp` and `notes`. `null` clears `notes`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWashRequest'
+            example:
+              notes: null
+      responses:
+        '200':
+          description: Wash updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wash'
+              example:
+                id: 77777777-7777-4777-8777-777777777777
+                petId: 44444444-4444-4444-8444-444444444444
+                timestamp: '2026-10-01T17:00:00.000Z'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/PetDeactivated'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags:
+        - Washes
+      operationId: deleteWash
+      summary: Hard-delete Wash
+      description: PHS-FR-011. Permanent. Next due is computed from the remaining Washes.
+      responses:
+        '204':
+          description: Wash hard-deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/PetDeactivated'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /pets/{petId}/wash-schedule:
+    parameters:
+      - $ref: '#/components/parameters/PetId'
+    put:
+      tags:
+        - Wash schedule
+      operationId: setWashSchedule
+      summary: Set Wash schedule
+      description: |
+        PHS-FR-010. Creates the Pet's Wash schedule. `startDate` must be on or
+        after the current UTC date. A schedule that already exists is `409`
+        `conflict`; change it with `PATCH`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetWashScheduleRequest'
+            example:
+              startDate: '2026-10-01'
+              intervalDays: 14
+      responses:
+        '201':
+          description: Wash schedule set
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WashSchedule'
+              example:
+                petId: 44444444-4444-4444-8444-444444444444
+                startDate: '2026-10-01'
+                intervalDays: 14
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          description: |
+            A Wash schedule already exists (`urn:my-pet-care:conflict`), or the Pet
+            is deactivated (`urn:my-pet-care:pet-deactivated`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                scheduleExists:
+                  summary: A Wash schedule already exists
+                  value:
+                    type: urn:my-pet-care:conflict
+                    title: Conflict
+                    status: 409
+                    detail: The request conflicts with the current state of the resource.
+                petDeactivated:
+                  summary: Pet is deactivated
+                  value:
+                    type: urn:my-pet-care:pet-deactivated
+                    title: Conflict
+                    status: 409
+                    detail: This Pet is deactivated.
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      tags:
+        - Wash schedule
+      operationId: getWashSchedule
+      summary: Get Wash schedule
+      description: PHS-FR-010. No schedule is `404`. Allowed when the Pet is deactivated.
+      responses:
+        '200':
+          description: Wash schedule found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WashSchedule'
+              example:
+                petId: 44444444-4444-4444-8444-444444444444
+                startDate: '2026-10-01'
+                intervalDays: 14
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags:
+        - Wash schedule
+      operationId: updateWashSchedule
+      summary: Update Wash schedule
+      description: |
+        PHS-FR-010. Partial update. A sent `startDate` must be on or after the
+        current UTC date and becomes the new anchor. Washes before it no longer
+        move next due. An `intervalDays`-only change does not re-check the
+        stored start date. No schedule is `404`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWashScheduleRequest'
+            example:
+              intervalDays: 21
+      responses:
+        '200':
+          description: Wash schedule updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WashSchedule'
+              example:
+                petId: 44444444-4444-4444-8444-444444444444
+                startDate: '2026-10-01'
+                intervalDays: 21
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/PetDeactivated'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags:
+        - Wash schedule
+      operationId: deleteWashSchedule
+      summary: Hard-delete Wash schedule
+      description: |
+        PHS-FR-010. Hard delete. Washes remain. Next due is `not-scheduled` until
+        a new schedule is set. No schedule is `404`.
+      responses:
+        '204':
+          description: Wash schedule deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/PetDeactivated'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /pets/{petId}/wash-schedule/next-due:
+    parameters:
+      - $ref: '#/components/parameters/PetId'
+    get:
+      tags:
+        - Wash schedule
+      operationId: getNextDueWash
+      summary: Get next appointed Wash
+      description: |
+        PHS-FR-012. `scheduled` with `nextDue` as a calendar date: the start date
+        while no Wash is on or after it, otherwise the UTC date of the latest
+        such Wash plus `intervalDays`. `not-scheduled` when no Wash schedule
+        exists. Allowed when the Pet is deactivated.
+      responses:
+        '200':
+          description: Next due outcome
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NextDueWash'
+              examples:
+                scheduled:
+                  summary: Wash schedule set
+                  value:
+                    status: scheduled
+                    nextDue: '2026-10-15'
+                notScheduled:
+                  summary: No Wash schedule
+                  value:
+                    status: not-scheduled
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /pets/{petId}/medical-record:
+    parameters:
+      - $ref: '#/components/parameters/PetId'
+    get:
+      tags:
+        - Medical record
+      operationId: getMedicalRecord
+      summary: Get Medical record
+      description: |
+        PHS-FR-013. Read-only view of the Pet's Vet visits (`visitedAt`
+        descending) and Medications (`startDate` descending). There is no
+        Medical record create, update, or delete. Allowed when the Pet is
+        deactivated.
+      responses:
+        '200':
+          description: Medical record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicalRecord'
+              example:
+                petId: 44444444-4444-4444-8444-444444444444
+                vetVisits:
+                  - id: 88888888-8888-4888-8888-888888888888
+                    petId: 44444444-4444-4444-8444-444444444444
+                    visitedAt: '2026-09-15T10:00:00.000Z'
+                    clinicName: Clínica Veterinària Gràcia
+                    reason: Annual check-up and vaccination
+                medications:
+                  - id: 99999999-9999-4999-8999-999999999999
+                    petId: 44444444-4444-4444-8444-444444444444
+                    drugName: Amoxicillin
+                    dosageInstructions: 250 mg twice a day with food
+                    startDate: '2026-09-15'
+                    endDate: '2026-09-25'
+                    vetVisitId: 88888888-8888-4888-8888-888888888888
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /pets/{petId}/vet-visits:
+    parameters:
+      - $ref: '#/components/parameters/PetId'
+    post:
+      tags:
+        - Vet visits
+      operationId: createVetVisit
+      summary: Create Vet visit
+      description: PHS-FR-014. `visitedAt`, `clinicName`, and `reason` are required.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVetVisitRequest'
+            example:
+              visitedAt: '2026-09-15T10:00:00.000Z'
+              clinicName: Clínica Veterinària Gràcia
+              reason: Annual check-up and vaccination
+      responses:
+        '201':
+          description: Vet visit created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VetVisit'
+              example:
+                id: 88888888-8888-4888-8888-888888888888
+                petId: 44444444-4444-4444-8444-444444444444
+                visitedAt: '2026-09-15T10:00:00.000Z'
+                clinicName: Clínica Veterinària Gràcia
+                reason: Annual check-up and vaccination
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/PetDeactivated'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      tags:
+        - Vet visits
+      operationId: listVetVisits
+      summary: List Vet visits
+      description: |
+        PHS-FR-014. Optional `from` and `to` filter on `visitedAt` and include
+        both ends. Results are `visitedAt` descending. Allowed when the Pet is
+        deactivated.
+      parameters:
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200':
+          description: Vet visits. Empty `items` when none match.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VetVisitList'
+              example:
+                items:
+                  - id: 88888888-8888-4888-8888-888888888888
+                    petId: 44444444-4444-4444-8444-444444444444
+                    visitedAt: '2026-09-15T10:00:00.000Z'
+                    clinicName: Clínica Veterinària Gràcia
+                    reason: Annual check-up and vaccination
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /vet-visits/{vetVisitId}:
+    parameters:
+      - $ref: '#/components/parameters/VetVisitId'
+    get:
+      tags:
+        - Vet visits
+      operationId: getVetVisit
+      summary: Get Vet visit
+      description: PHS-FR-014. Allowed when the Pet is deactivated.
+      responses:
+        '200':
+          description: Vet visit found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VetVisit'
+              example:
+                id: 88888888-8888-4888-8888-888888888888
+                petId: 44444444-4444-4444-8444-444444444444
+                visitedAt: '2026-09-15T10:00:00.000Z'
+                clinicName: Clínica Veterinària Gràcia
+                reason: Annual check-up and vaccination
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags:
+        - Vet visits
+      operationId: updateVetVisit
+      summary: Update Vet visit
+      description: PHS-FR-014. Partial update. Required fields cannot be cleared.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateVetVisitRequest'
+            example:
+              reason: Annual check-up, vaccination, and ear infection
+      responses:
+        '200':
+          description: Vet visit updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VetVisit'
+              example:
+                id: 88888888-8888-4888-8888-888888888888
+                petId: 44444444-4444-4444-8444-444444444444
+                visitedAt: '2026-09-15T10:00:00.000Z'
+                clinicName: Clínica Veterinària Gràcia
+                reason: Annual check-up, vaccination, and ear infection
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/PetDeactivated'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags:
+        - Vet visits
+      operationId: deleteVetVisit
+      summary: Hard-delete Vet visit
+      description: |
+        PHS-FR-014. Permanent. Medications linked to this Vet visit remain and
+        lose their `vetVisitId`.
+      responses:
+        '204':
+          description: Vet visit hard-deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/PetDeactivated'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /pets/{petId}/medications:
+    parameters:
+      - $ref: '#/components/parameters/PetId'
+    post:
+      tags:
+        - Medications
+      operationId: createMedication
+      summary: Create Medication
+      description: |
+        PHS-FR-015. `drugName`, `dosageInstructions`, and `startDate` are
+        required. `endDate`, when sent, is on or after `startDate`. `vetVisitId`
+        is optional; a Vet visit that is missing or belongs to another Pet is
+        `404`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMedicationRequest'
+            example:
+              drugName: Amoxicillin
+              dosageInstructions: 250 mg twice a day with food
+              startDate: '2026-09-15'
+              endDate: '2026-09-25'
+              vetVisitId: 88888888-8888-4888-8888-888888888888
+      responses:
+        '201':
+          description: Medication created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Medication'
+              example:
+                id: 99999999-9999-4999-8999-999999999999
+                petId: 44444444-4444-4444-8444-444444444444
+                drugName: Amoxicillin
+                dosageInstructions: 250 mg twice a day with food
+                startDate: '2026-09-15'
+                endDate: '2026-09-25'
+                vetVisitId: 88888888-8888-4888-8888-888888888888
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/PetDeactivated'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      tags:
+        - Medications
+      operationId: listMedications
+      summary: List Medications
+      description: |
+        PHS-FR-015. Results are `startDate` descending. Allowed when the Pet is
+        deactivated.
+      responses:
+        '200':
+          description: Medications. Empty `items` when none exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationList'
+              example:
+                items:
+                  - id: 99999999-9999-4999-8999-999999999999
+                    petId: 44444444-4444-4444-8444-444444444444
+                    drugName: Amoxicillin
+                    dosageInstructions: 250 mg twice a day with food
+                    startDate: '2026-09-15'
+                    endDate: '2026-09-25'
+                    vetVisitId: 88888888-8888-4888-8888-888888888888
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /medications/{medicationId}:
+    parameters:
+      - $ref: '#/components/parameters/MedicationId'
+    get:
+      tags:
+        - Medications
+      operationId: getMedication
+      summary: Get Medication
+      description: PHS-FR-015. Allowed when the Pet is deactivated.
+      responses:
+        '200':
+          description: Medication found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Medication'
+              example:
+                id: 99999999-9999-4999-8999-999999999999
+                petId: 44444444-4444-4444-8444-444444444444
+                drugName: Amoxicillin
+                dosageInstructions: 250 mg twice a day with food
+                startDate: '2026-09-15'
+                endDate: '2026-09-25'
+                vetVisitId: 88888888-8888-4888-8888-888888888888
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags:
+        - Medications
+      operationId: updateMedication
+      summary: Update Medication
+      description: |
+        PHS-FR-015. Partial update. `null` clears `endDate` or `vetVisitId`. A
+        Vet visit that is missing or belongs to another Pet is `404`. The
+        resulting `endDate` must be on or after `startDate`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMedicationRequest'
+            example:
+              endDate: '2026-09-29'
+      responses:
+        '200':
+          description: Medication updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Medication'
+              example:
+                id: 99999999-9999-4999-8999-999999999999
+                petId: 44444444-4444-4444-8444-444444444444
+                drugName: Amoxicillin
+                dosageInstructions: 250 mg twice a day with food
+                startDate: '2026-09-15'
+                endDate: '2026-09-29'
+                vetVisitId: 88888888-8888-4888-8888-888888888888
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/PetDeactivated'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags:
+        - Medications
+      operationId: deleteMedication
+      summary: Hard-delete Medication
+      description: PHS-FR-015. Permanent.
+      responses:
+        '204':
+          description: Medication hard-deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/PetDeactivated'
+        '503':
+          $ref: '#/components/responses/OwnerPetManagerUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Owner JWT with claim `ownerId` and `aud` `my-pet-care`, or a platform
+        JWT with claim `service` and `aud` `my-pet-care:platform` (ADR-0016).
+        Only `activity-manager` is an accepted platform caller, and only on the
+        routes that say so.
+  parameters:
+    PetId:
+      name: petId
+      in: path
+      required: true
+      description: Pet id from Owner & Pet Manager.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    WeightMetricId:
+      name: metricId
+      in: path
+      required: true
+      description: Weight Health metric id returned on record.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    MealId:
+      name: mealId
+      in: path
+      required: true
+      description: Meal id returned on create. Also the id of its calories-consumed Health metric.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    ActivityId:
+      name: activityId
+      in: path
+      required: true
+      description: Activity id from Activity Manager. Also the id of its activity-duration Health metric.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    WashId:
+      name: washId
+      in: path
+      required: true
+      description: Wash id returned on register.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    VetVisitId:
+      name: vetVisitId
+      in: path
+      required: true
+      description: Vet visit id returned on create.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    MedicationId:
+      name: medicationId
+      in: path
+      required: true
+      description: Medication id returned on create.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    From:
+      name: from
+      in: query
+      required: false
+      description: Optional inclusive start of the timestamp range.
+      schema:
+        $ref: '#/components/schemas/Timestamp'
+    To:
+      name: to
+      in: query
+      required: false
+      description: Optional inclusive end of the timestamp range. When both are sent, must be greater
+        than or equal to `from`.
+      schema:
+        $ref: '#/components/schemas/Timestamp'
+    RangeFrom:
+      name: from
+      in: query
+      required: true
+      description: Inclusive start of the Meal timestamp range.
+      schema:
+        $ref: '#/components/schemas/Timestamp'
+    RangeTo:
+      name: to
+      in: query
+      required: true
+      description: Inclusive end of the Meal timestamp range. Must be greater than or equal to `from`.
+      schema:
+        $ref: '#/components/schemas/Timestamp'
+  responses:
+    ValidationFailed:
+      description: The request is invalid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: urn:my-pet-care:validation-failed
+            title: Bad Request
+            status: 400
+            detail: The request is invalid.
+    Unauthorized:
+      description: Missing, invalid, or expired Bearer JWT.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: urn:my-pet-care:unauthorized
+            title: Unauthorized
+            status: 401
+            detail: Authentication is required to access this resource.
+    Forbidden:
+      description: |
+        The kind of caller can never perform this operation: a platform service
+        on an Owner route, a platform service other than Activity Manager, or an
+        Owner on an Activity Manager route.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: urn:my-pet-care:forbidden
+            title: Forbidden
+            status: 403
+            detail: You are not allowed to perform this operation.
+    ResourceNotFound:
+      description: |
+        Missing resource, or the caller is not allowed to see it. Same body
+        either way (`urn:my-pet-care:resource-not-found`).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: urn:my-pet-care:resource-not-found
+            title: Not Found
+            status: 404
+            detail: The requested resource was not found.
+    PetDeactivated:
+      description: The caller owns the Pet and the Pet is deactivated.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: urn:my-pet-care:pet-deactivated
+            title: Conflict
+            status: 409
+            detail: This Pet is deactivated.
+    OwnerPetManagerUnavailable:
+      description: Owner & Pet Manager cannot be reached.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: urn:my-pet-care:owner-pet-manager-unavailable
+            title: Service Unavailable
+            status: 503
+            detail: Owner & Pet Manager could not be reached.
+    InternalError:
+      description: Unexpected failure.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: urn:my-pet-care:internal-error
+            title: Internal Server Error
+            status: 500
+            detail: The service failed to handle this request.
+  schemas:
+    Uuid:
+      type: string
+      format: uuid
+      description: RFC 4122 UUID.
+    Timestamp:
+      type: string
+      format: date-time
+      description: ISO-8601 instant.
+    CalendarDate:
+      type: string
+      format: date
+      description: ISO-8601 calendar date (`YYYY-MM-DD`), read as a UTC date.
+    HealthStatus:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          const: ok
+    ProblemDetails:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - title
+        - status
+        - detail
+      properties:
+        type:
+          type: string
+          description: Stable URN (ADR-0014).
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+          description: Fixed sentence. No id or path.
+    WeightKg:
+      type: number
+      exclusiveMinimum: 0
+      description: Weight in kilograms.
+    Kilocalories:
+      type: integer
+      minimum: 0
+      description: Kilocalories.
+    DurationMinutes:
+      type: integer
+      minimum: 1
+      description: Activity duration in minutes.
+    Notes:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    HealthProfile:
+      type: object
+      additionalProperties: false
+      description: Always exists for an existing Pet. There is no create or delete.
+      required:
+        - petId
+        - latestWeightKg
+        - recommendedDailyKilocalories
+        - recommendedDailyKilocaloriesOverridden
+      properties:
+        petId:
+          $ref: '#/components/schemas/Uuid'
+        latestWeightKg:
+          oneOf:
+            - $ref: '#/components/schemas/WeightKg'
+            - type: 'null'
+          description: Value of the remaining weight Health metric with the latest timestamp. `null` when
+            none remain.
+        recommendedDailyKilocalories:
+          oneOf:
+            - type: integer
+              minimum: 1
+            - type: 'null'
+          description: |
+            The Owner override while one is in effect, otherwise derived from latest
+            weight and species. `null` when there is no override and no latest weight.
+        recommendedDailyKilocaloriesOverridden:
+          type: boolean
+          description: True while an Owner override replaces the derived value.
+    SetRecommendedDailyKilocaloriesOverrideRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - value
+      properties:
+        value:
+          type: integer
+          minimum: 1
+          description: Recommended daily kilocalories set by the Owner.
+    WeightMetric:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - petId
+        - weightKg
+        - timestamp
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        petId:
+          $ref: '#/components/schemas/Uuid'
+        weightKg:
+          $ref: '#/components/schemas/WeightKg'
+        timestamp:
+          $ref: '#/components/schemas/Timestamp'
+    WeightMetricList:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/WeightMetric'
+    CreateWeightMetricRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - weightKg
+        - timestamp
+      properties:
+        weightKg:
+          $ref: '#/components/schemas/WeightKg'
+        timestamp:
+          $ref: '#/components/schemas/Timestamp'
+    UpdateWeightMetricRequest:
+      type: object
+      additionalProperties: false
+      description: At least one field. Omit a field to leave it unchanged.
+      minProperties: 1
+      properties:
+        weightKg:
+          $ref: '#/components/schemas/WeightKg'
+        timestamp:
+          $ref: '#/components/schemas/Timestamp'
+    CaloriesConsumedMetric:
+      type: object
+      additionalProperties: false
+      description: Written only through its Meal.
+      required:
+        - id
+        - petId
+        - kilocalories
+        - timestamp
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+          description: Equal to the Meal id (ADR-0024).
+        petId:
+          $ref: '#/components/schemas/Uuid'
+        kilocalories:
+          $ref: '#/components/schemas/Kilocalories'
+        timestamp:
+          $ref: '#/components/schemas/Timestamp'
+    CaloriesConsumedMetricList:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CaloriesConsumedMetric'
+    ActivityDurationMetric:
+      type: object
+      additionalProperties: false
+      description: Written only by Activity Manager.
+      required:
+        - id
+        - petId
+        - durationMinutes
+        - timestamp
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+          description: Equal to the Activity id in Activity Manager (ADR-0024).
+        petId:
+          $ref: '#/components/schemas/Uuid'
+        durationMinutes:
+          $ref: '#/components/schemas/DurationMinutes'
+        timestamp:
+          $ref: '#/components/schemas/Timestamp'
+    ActivityDurationMetricList:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActivityDurationMetric'
+    SyncActivityDurationMetricRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - petId
+        - durationMinutes
+        - timestamp
+      properties:
+        petId:
+          $ref: '#/components/schemas/Uuid'
+        durationMinutes:
+          $ref: '#/components/schemas/DurationMinutes'
+        timestamp:
+          $ref: '#/components/schemas/Timestamp'
+          description: The Activity's timestamp.
+    MealLabel:
+      type: string
+      minLength: 1
+      maxLength: 40
+    Meal:
+      type: object
+      additionalProperties: false
+      description: '`brand` and `notes` are present only when set.'
+      required:
+        - id
+        - petId
+        - foodName
+        - kilocalories
+        - timestamp
+        - labels
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        petId:
+          $ref: '#/components/schemas/Uuid'
+        foodName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        kilocalories:
+          $ref: '#/components/schemas/Kilocalories'
+        timestamp:
+          $ref: '#/components/schemas/Timestamp'
+        brand:
+          type: string
+          minLength: 1
+          maxLength: 120
+        labels:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/MealLabel'
+          description: Short free-text tags. Empty when none.
+        notes:
+          $ref: '#/components/schemas/Notes'
+    MealList:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Meal'
+    CreateMealRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - foodName
+        - kilocalories
+        - timestamp
+      properties:
+        foodName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        kilocalories:
+          $ref: '#/components/schemas/Kilocalories'
+        timestamp:
+          $ref: '#/components/schemas/Timestamp'
+        brand:
+          type: string
+          minLength: 1
+          maxLength: 120
+        labels:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/MealLabel'
+          description: Short free-text tags. Empty when none.
+        notes:
+          $ref: '#/components/schemas/Notes'
+    UpdateMealRequest:
+      type: object
+      additionalProperties: false
+      description: |
+        At least one field. Omit a field to leave it unchanged. `null` clears
+        `brand` or `notes`. `[]` clears `labels`.
+      minProperties: 1
+      properties:
+        foodName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        kilocalories:
+          $ref: '#/components/schemas/Kilocalories'
+        timestamp:
+          $ref: '#/components/schemas/Timestamp'
+        brand:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 120
+            - type: 'null'
+        labels:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/MealLabel'
+          description: Short free-text tags. Empty when none.
+        notes:
+          oneOf:
+            - $ref: '#/components/schemas/Notes'
+            - type: 'null'
+    KilocaloriesEaten:
+      type: object
+      additionalProperties: false
+      required:
+        - from
+        - to
+        - kilocalories
+      properties:
+        from:
+          $ref: '#/components/schemas/Timestamp'
+        to:
+          $ref: '#/components/schemas/Timestamp'
+        kilocalories:
+          $ref: '#/components/schemas/Kilocalories'
+          description: Sum of Meal kilocalories in the range. `0` when none.
+    Wash:
+      type: object
+      additionalProperties: false
+      description: '`notes` is present only when set.'
+      required:
+        - id
+        - petId
+        - timestamp
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        petId:
+          $ref: '#/components/schemas/Uuid'
+        timestamp:
+          $ref: '#/components/schemas/Timestamp'
+        notes:
+          $ref: '#/components/schemas/Notes'
+    WashList:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Wash'
+    CreateWashRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - timestamp
+      properties:
+        timestamp:
+          $ref: '#/components/schemas/Timestamp'
+        notes:
+          $ref: '#/components/schemas/Notes'
+    UpdateWashRequest:
+      type: object
+      additionalProperties: false
+      description: At least one field. Omit a field to leave it unchanged. `null` clears `notes`.
+      minProperties: 1
+      properties:
+        timestamp:
+          $ref: '#/components/schemas/Timestamp'
+        notes:
+          oneOf:
+            - $ref: '#/components/schemas/Notes'
+            - type: 'null'
+    IntervalDays:
+      type: integer
+      minimum: 1
+      description: Recurring interval in whole days.
+    WashSchedule:
+      type: object
+      additionalProperties: false
+      required:
+        - petId
+        - startDate
+        - intervalDays
+      properties:
+        petId:
+          $ref: '#/components/schemas/Uuid'
+        startDate:
+          $ref: '#/components/schemas/CalendarDate'
+        intervalDays:
+          $ref: '#/components/schemas/IntervalDays'
+    SetWashScheduleRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - startDate
+        - intervalDays
+      properties:
+        startDate:
+          $ref: '#/components/schemas/CalendarDate'
+          description: On or after the current UTC date.
+        intervalDays:
+          $ref: '#/components/schemas/IntervalDays'
+    UpdateWashScheduleRequest:
+      type: object
+      additionalProperties: false
+      description: At least one field. Omit a field to leave it unchanged.
+      minProperties: 1
+      properties:
+        startDate:
+          $ref: '#/components/schemas/CalendarDate'
+          description: On or after the current UTC date. Becomes the new anchor.
+        intervalDays:
+          $ref: '#/components/schemas/IntervalDays'
+    ScheduledNextDueWash:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+        - nextDue
+      properties:
+        status:
+          const: scheduled
+        nextDue:
+          $ref: '#/components/schemas/CalendarDate'
+    NotScheduledNextDueWash:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          const: not-scheduled
+    NextDueWash:
+      oneOf:
+        - $ref: '#/components/schemas/ScheduledNextDueWash'
+        - $ref: '#/components/schemas/NotScheduledNextDueWash'
+      discriminator:
+        propertyName: status
+        mapping:
+          scheduled: '#/components/schemas/ScheduledNextDueWash'
+          not-scheduled: '#/components/schemas/NotScheduledNextDueWash'
+    VetVisit:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - petId
+        - visitedAt
+        - clinicName
+        - reason
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        petId:
+          $ref: '#/components/schemas/Uuid'
+        visitedAt:
+          $ref: '#/components/schemas/Timestamp'
+          description: When the visit happened.
+        clinicName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: Reason for the visit or a summary of it.
+    VetVisitList:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/VetVisit'
+    CreateVetVisitRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - visitedAt
+        - clinicName
+        - reason
+      properties:
+        visitedAt:
+          $ref: '#/components/schemas/Timestamp'
+        clinicName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+    UpdateVetVisitRequest:
+      type: object
+      additionalProperties: false
+      description: At least one field. Omit a field to leave it unchanged.
+      minProperties: 1
+      properties:
+        visitedAt:
+          $ref: '#/components/schemas/Timestamp'
+        clinicName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+    Medication:
+      type: object
+      additionalProperties: false
+      description: |
+        A treatment course. `endDate` and `vetVisitId` are present only when set.
+        Hard-deleting the linked Vet visit removes `vetVisitId`.
+      required:
+        - id
+        - petId
+        - drugName
+        - dosageInstructions
+        - startDate
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        petId:
+          $ref: '#/components/schemas/Uuid'
+        drugName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        dosageInstructions:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        startDate:
+          $ref: '#/components/schemas/CalendarDate'
+        endDate:
+          $ref: '#/components/schemas/CalendarDate'
+          description: On or after `startDate`.
+        vetVisitId:
+          $ref: '#/components/schemas/Uuid'
+          description: Linked Vet visit of the same Pet.
+    MedicationList:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Medication'
+    CreateMedicationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - drugName
+        - dosageInstructions
+        - startDate
+      properties:
+        drugName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        dosageInstructions:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        startDate:
+          $ref: '#/components/schemas/CalendarDate'
+        endDate:
+          $ref: '#/components/schemas/CalendarDate'
+        vetVisitId:
+          $ref: '#/components/schemas/Uuid'
+    UpdateMedicationRequest:
+      type: object
+      additionalProperties: false
+      description: |
+        At least one field. Omit a field to leave it unchanged. `null` clears
+        `endDate` or `vetVisitId`.
+      minProperties: 1
+      properties:
+        drugName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        dosageInstructions:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        startDate:
+          $ref: '#/components/schemas/CalendarDate'
+        endDate:
+          oneOf:
+            - $ref: '#/components/schemas/CalendarDate'
+            - type: 'null'
+        vetVisitId:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+    MedicalRecord:
+      type: object
+      additionalProperties: false
+      required:
+        - petId
+        - vetVisits
+        - medications
+      properties:
+        petId:
+          $ref: '#/components/schemas/Uuid'
+        vetVisits:
+          type: array
+          items:
+            $ref: '#/components/schemas/VetVisit'
+          description: '`visitedAt` descending.'
+        medications:
+          type: array
+          items:
+            $ref: '#/components/schemas/Medication'
+          description: '`startDate` descending.'

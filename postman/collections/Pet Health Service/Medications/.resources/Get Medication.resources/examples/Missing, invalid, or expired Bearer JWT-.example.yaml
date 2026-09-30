@@ -1,0 +1,37 @@
+$kind: http-example
+name: Missing, invalid, or expired Bearer JWT.
+request:
+  url: '{{baseUrl}}/medications/:medicationId'
+  method: GET
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: 'Added as a part of security scheme: bearer'
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: medicationId
+      value: <uuid>
+      disabled: false
+      description: (Required) Medication id returned on create.
+    - key: baseUrl
+      value: '{{baseUrl}}'
+      description: ''
+  body:
+    type: text
+    content: ''
+response:
+  statusCode: 401
+  statusText: Unauthorized
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "type": "urn:my-pet-care:unauthorized",
+        "title": "Unauthorized",
+        "status": 401,
+        "detail": "Authentication is required to access this resource."
+      }
+order: 2000

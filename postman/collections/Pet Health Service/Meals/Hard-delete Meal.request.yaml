@@ -1,0 +1,26 @@
+$kind: http-request
+description: |
+  PHS-FR-008. Permanent. The calories-consumed Health metric is deleted
+  with it, and the Meal leaves kilocalories-eaten sums.
+url: '{{baseUrl}}/meals/:mealId'
+method: DELETE
+headers:
+  Accept: application/json
+pathVariables:
+  - key: mealId
+    value: '{{mealId}}'
+    disabled: false
+    description: (Required) Meal id returned on create. Also the id of its calories-consumed Health metric.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 204', function () {
+        pm.response.to.have.status(204);
+      });
+examples: ./.resources/Hard-delete Meal.resources/examples
+order: 6000

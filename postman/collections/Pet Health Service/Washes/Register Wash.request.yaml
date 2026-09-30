@@ -1,0 +1,50 @@
+$kind: http-request
+description: |
+  PHS-FR-011. Registers a completed Wash. `notes` is optional. Allowed when
+  no Wash schedule is set.
+url: '{{baseUrl}}/pets/:petId/washes'
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: petId
+    value: '{{petId}}'
+    disabled: false
+    description: (Required) Pet id from Owner & Pet Manager.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+body:
+  type: json
+  content: |-
+    {
+      "timestamp": "2026-10-01T17:00:00.000Z",
+      "notes": "Oatmeal shampoo"
+    }
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      function persist(key, value) {
+        if (value === undefined || value === null || value === '') {
+          return;
+        }
+        pm.collectionVariables.set(key, String(value));
+        pm.environment.set(key, String(value));
+      }
+
+      pm.test('HTTP status is 201', function () {
+        pm.response.to.have.status(201);
+      });
+      if (pm.response.code !== 201) {
+        return;
+      }
+      pm.test('response includes an id', function () {
+        const body = pm.response.json();
+        pm.expect(body.id).to.be.a('string').and.not.empty;
+        persist('washId', body.id);
+      });
+examples: ./.resources/Register Wash.resources/examples
+order: 1000

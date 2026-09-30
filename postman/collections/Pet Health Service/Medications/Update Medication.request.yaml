@@ -1,0 +1,34 @@
+$kind: http-request
+description: |
+  PHS-FR-015. Partial update. `null` clears `endDate` or `vetVisitId`. A
+  Vet visit that is missing or belongs to another Pet is `404`. The
+  resulting `endDate` must be on or after `startDate`.
+url: '{{baseUrl}}/medications/:medicationId'
+method: PATCH
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: medicationId
+    value: '{{medicationId}}'
+    disabled: false
+    description: (Required) Medication id returned on create.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+body:
+  type: json
+  content: |-
+    {
+      "endDate": "2026-09-29"
+    }
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
+examples: ./.resources/Update Medication.resources/examples
+order: 4000

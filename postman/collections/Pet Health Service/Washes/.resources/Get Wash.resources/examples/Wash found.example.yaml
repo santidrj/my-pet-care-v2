@@ -1,0 +1,36 @@
+$kind: http-example
+request:
+  url: '{{baseUrl}}/washes/:washId'
+  method: GET
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: 'Added as a part of security scheme: bearer'
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: washId
+      value: <uuid>
+      disabled: false
+      description: (Required) Wash id returned on register.
+    - key: baseUrl
+      value: '{{baseUrl}}'
+      description: ''
+  body:
+    type: text
+    content: ''
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "id": "77777777-7777-4777-8777-777777777777",
+        "petId": "44444444-4444-4444-8444-444444444444",
+        "timestamp": "2026-10-01T17:00:00.000Z",
+        "notes": "Oatmeal shampoo"
+      }
+order: 1000

@@ -1,0 +1,26 @@
+$kind: http-request
+description: |
+  PHS-FR-015. Results are `startDate` descending. Allowed when the Pet is
+  deactivated.
+url: '{{baseUrl}}/pets/:petId/medications'
+method: GET
+headers:
+  Accept: application/json
+pathVariables:
+  - key: petId
+    value: '{{petId}}'
+    disabled: false
+    description: (Required) Pet id from Owner & Pet Manager.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
+examples: ./.resources/List Medications.resources/examples
+order: 2000

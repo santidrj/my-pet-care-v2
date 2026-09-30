@@ -1,0 +1,34 @@
+$kind: http-request
+description: |
+  PHS-FR-006. Replaces the derived value, or an earlier override, until
+  the Owner clears it. Later weight changes do not change it. Response is
+  the Health profile.
+url: '{{baseUrl}}/pets/:petId/health-profile/recommended-daily-kilocalories-override'
+method: PUT
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: petId
+    value: '{{petId}}'
+    disabled: false
+    description: (Required) Pet id from Owner & Pet Manager.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+body:
+  type: json
+  content: |-
+    {
+      "value": 650
+    }
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
+examples: ./.resources/Set recommended daily kilocalories override.resources/examples
+order: 2000

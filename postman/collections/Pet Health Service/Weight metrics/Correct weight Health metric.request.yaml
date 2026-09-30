@@ -1,0 +1,34 @@
+$kind: http-request
+description: |
+  PHS-FR-004. Partial update of `weightKg` and `timestamp`. Latest weight
+  and, with no override in effect, recommended daily kilocalories are
+  derived again.
+url: '{{baseUrl}}/weight-metrics/:metricId'
+method: PATCH
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: metricId
+    value: '{{weightMetricId}}'
+    disabled: false
+    description: (Required) Weight Health metric id returned on record.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+body:
+  type: json
+  content: |-
+    {
+      "weightKg": 12.2
+    }
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
+examples: ./.resources/Correct weight Health metric.resources/examples
+order: 4000

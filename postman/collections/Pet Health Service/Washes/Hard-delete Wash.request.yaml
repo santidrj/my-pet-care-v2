@@ -1,0 +1,24 @@
+$kind: http-request
+description: PHS-FR-011. Permanent. Next due is computed from the remaining Washes.
+url: '{{baseUrl}}/washes/:washId'
+method: DELETE
+headers:
+  Accept: application/json
+pathVariables:
+  - key: washId
+    value: '{{washId}}'
+    disabled: false
+    description: (Required) Wash id returned on register.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 204', function () {
+        pm.response.to.have.status(204);
+      });
+examples: ./.resources/Hard-delete Wash.resources/examples
+order: 5000

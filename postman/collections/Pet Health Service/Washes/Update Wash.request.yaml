@@ -1,0 +1,31 @@
+$kind: http-request
+description: PHS-FR-011. Partial update of `timestamp` and `notes`. `null` clears `notes`.
+url: '{{baseUrl}}/washes/:washId'
+method: PATCH
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: washId
+    value: '{{washId}}'
+    disabled: false
+    description: (Required) Wash id returned on register.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+body:
+  type: json
+  content: |-
+    {
+      "notes": null
+    }
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
+examples: ./.resources/Update Wash.resources/examples
+order: 4000

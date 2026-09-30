@@ -1,0 +1,26 @@
+$kind: http-request
+description: |
+  PHS-FR-014. Permanent. Medications linked to this Vet visit remain and
+  lose their `vetVisitId`.
+url: '{{baseUrl}}/vet-visits/:vetVisitId'
+method: DELETE
+headers:
+  Accept: application/json
+pathVariables:
+  - key: vetVisitId
+    value: '{{vetVisitId}}'
+    disabled: false
+    description: (Required) Vet visit id returned on create.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 204', function () {
+        pm.response.to.have.status(204);
+      });
+examples: ./.resources/Hard-delete Vet visit.resources/examples
+order: 5000

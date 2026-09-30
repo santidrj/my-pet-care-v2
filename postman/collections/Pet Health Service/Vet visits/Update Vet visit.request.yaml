@@ -1,0 +1,31 @@
+$kind: http-request
+description: PHS-FR-014. Partial update. Required fields cannot be cleared.
+url: '{{baseUrl}}/vet-visits/:vetVisitId'
+method: PATCH
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: vetVisitId
+    value: '{{vetVisitId}}'
+    disabled: false
+    description: (Required) Vet visit id returned on create.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+body:
+  type: json
+  content: |-
+    {
+      "reason": "Annual check-up, vaccination, and ear infection"
+    }
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
+examples: ./.resources/Update Vet visit.resources/examples
+order: 4000

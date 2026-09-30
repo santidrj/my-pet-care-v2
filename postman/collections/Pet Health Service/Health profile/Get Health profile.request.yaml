@@ -1,0 +1,28 @@
+$kind: http-request
+description: |
+  PHS-FR-001. Callable by the Pet's Owner or by Activity Manager (platform
+  JWT with `service` `activity-manager`) for latest-weight reads. Both
+  fields are always present and `null` when empty. Allowed when the Pet is
+  deactivated. Any other platform service is `403`.
+url: '{{baseUrl}}/pets/:petId/health-profile'
+method: GET
+headers:
+  Accept: application/json
+pathVariables:
+  - key: petId
+    value: '{{petId}}'
+    disabled: false
+    description: (Required) Pet id from Owner & Pet Manager.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
+examples: ./.resources/Get Health profile.resources/examples
+order: 1000

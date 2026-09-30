@@ -1,0 +1,40 @@
+$kind: http-example
+name: The request is invalid.
+request:
+  url: '{{baseUrl}}/pets/:petId/activity-duration-metrics?from=2026-09-28T00:00:00.000Z&to=2026-09-28T23:59:59.999Z'
+  method: GET
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: 'Added as a part of security scheme: bearer'
+    - key: Accept
+      value: application/json
+  queryParams:
+    from: '2026-09-28T00:00:00.000Z'
+    to: '2026-09-28T23:59:59.999Z'
+  pathVariables:
+    - key: petId
+      value: <uuid>
+      disabled: false
+      description: (Required) Pet id from Owner & Pet Manager.
+    - key: baseUrl
+      value: '{{baseUrl}}'
+      description: ''
+  body:
+    type: text
+    content: ''
+response:
+  statusCode: 400
+  statusText: Bad Request
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "type": "urn:my-pet-care:validation-failed",
+        "title": "Bad Request",
+        "status": 400,
+        "detail": "The request is invalid."
+      }
+order: 2000

@@ -25,8 +25,8 @@ This document defines the requirements for the **Pet Health Service** of the My 
 - **Health profile** for a Pet: latest weight and recommended daily kilocalories
 - **Health metrics** for weight, calories consumed, and activity duration: record, read history, correct, and delete readings
 - **Meals** as the only write path for calories-consumed Health metrics, including the kilocalories-eaten sum over a from–to range
-- Recommended daily kilocalories: compute a suggestion from weight and species, allow an Owner override, and explicit recalculate
-- **Washes** and **Wash schedule**: register Washes, set a start date and a recurring interval in days, and read next due and wash history
+- Recommended daily kilocalories: derive it from latest weight and species, allow an Owner override, and clear that override
+- **Washes** and **Wash schedule**: register Washes, set, change, and delete a start date and a recurring interval in days, and read next due and wash history
 - **Medical record** as a read-only view of **Vet visits** and **Medications**
 - Vet visit and Medication create, read, update, and hard-delete
 - Activity-duration Health metrics written by Activity Manager
@@ -50,15 +50,16 @@ This document defines the requirements for the **Pet Health Service** of the My 
 - All data in this service is keyed by an existing Pet id from Owner & Pet Manager. This service does not redefine ownership.
 - The Health profile’s latest weight equals the latest remaining weight Health metric by timestamp, or is empty when none remain.
 - Recommended daily kilocalories and latest weight are always present on the Health profile. Each is empty when it has not been set.
+- Without an Owner override, recommended daily kilocalories is derived from the current latest weight and species. It changes whenever latest weight changes and is empty when latest weight is empty. An Owner override replaces it until the Owner clears the override.
 - A weight value must be greater than zero. Meal kilocalories must be zero or greater.
 - **Meals** are the only write path for the calories-consumed Health metric. The metric’s value is the Meal’s kilocalories and its timestamp is the Meal’s timestamp.
 - Kilocalories eaten over a from–to range includes Meals at both ends. `from` equal to `to` counts Meals at that timestamp.
 - Each Activity has one activity-duration Health metric. The value is duration in minutes and the timestamp is the Activity’s timestamp.
 - **Medical record** is not a separately authored entity. It is the Pet’s Vet visits and Medications together.
 - **Medication** is a treatment course, optionally linked to a Vet visit for the same Pet.
-- A **Wash schedule** has a start date and a positive interval in whole days. On create and on a later start-date change, the start date must be on or after the current date.
-- Next due is the start date while no Wash has a timestamp on or after that start date. Once such a Wash exists, next due is the latest of those timestamps plus the interval. Washes before the start date do not move next due.
-- Deletes of a Meal, Wash, Vet visit, and Medication are hard deletes. Deleting a Meal deletes its calories-consumed Health metric.
+- A **Wash schedule** has a start date and a positive interval in whole days. On create and on a later start-date change, the start date must be on or after the current date. The current date is the UTC date.
+- Next due is a calendar date. It is the start date while no Wash has a timestamp on or after that start date. Once such a Wash exists, next due is the UTC date of the latest of those timestamps plus the interval. Washes before the start date do not move next due.
+- Deletes of a Meal, Wash, Vet visit, Medication, and Wash schedule are hard deletes. Deleting a Meal deletes its calories-consumed Health metric. Deleting a Vet visit removes the link from any Medication that referenced it and keeps those Medications.
 
 ## Constraints
 
@@ -66,7 +67,7 @@ This document defines the requirements for the **Pet Health Service** of the My 
 - Pet existence, species, ownership, and active or deactivated status come from Owner & Pet Manager.
 - Activity Manager is the only writer of activity-duration Health metrics. The Owner cannot author those readings here.
 - Create and update of an activity-duration metric fail when the Pet is missing or deactivated. Hard-delete of that metric still succeeds when the Pet is deactivated.
-- Recommended daily kilocalories use current profile weight and species, with service-configured species multipliers. Breed, age, and neutered status are not inputs.
+- Recommended daily kilocalories use current latest weight and species, with service-configured species multipliers. Breed, age, and neutered status are not inputs.
 - Password handling, photo storage, and encryption at rest are outside this service.
 
 ## Assumptions
@@ -84,7 +85,7 @@ This document defines the requirements for the **Pet Health Service** of the My 
 1. The Pet’s Owner can retrieve the Health profile by Pet id.
 2. Activity Manager, with a platform JWT whose `service` is `activity-manager`, can retrieve the Health profile by Pet id for latest-weight reads used in calorie estimation (same profile shape). Other platform services are not callers of this operation unless a later FR authorizes them.
 3. The profile always includes latest weight. The value equals the latest remaining weight Health metric by timestamp, and is empty when none remain.
-4. The profile always includes recommended daily kilocalories. The value is the computed or overridden amount, and is empty when neither has been set.
+4. The profile always includes recommended daily kilocalories and whether an Owner override is in effect. The value is the override when one is in effect, otherwise the value derived from latest weight and species (PHS-FR-005). It is empty when there is no override and no latest weight.
 5. Retrieval fails if the caller is neither the Pet’s Owner nor Activity Manager as above.
 6. Retrieval of a non-existent Pet fails in a way distinguishable from success.
 7. Retrieval remains allowed when the Pet is deactivated in Owner & Pet Manager.
@@ -98,9 +99,10 @@ This document defines the requirements for the **Pet Health Service** of the My 
 1. The Pet’s Owner can record a weight with a **value** and **timestamp**.
 2. The value must be greater than zero. A missing or invalid timestamp fails.
 3. On success, a weight Health metric is appended and the Health profile’s latest weight equals the latest remaining weight metric by timestamp (which may still be an older reading if this timestamp is backdated).
-4. Record fails if the caller is not the Pet’s Owner.
-5. Record fails if the Pet does not exist or is deactivated in Owner & Pet Manager.
-6. There is no separate edit-profile-weight path that skips history.
+4. On success, when no Owner override is in effect, recommended daily kilocalories is derived again from the resulting latest weight (PHS-FR-005).
+5. Record fails if the caller is not the Pet’s Owner.
+6. Record fails if the Pet does not exist or is deactivated in Owner & Pet Manager.
+7. There is no separate edit-profile-weight path that skips history.
 
 ### PHS-FR-003 — List / get weight Health metrics
 
@@ -123,35 +125,35 @@ This document defines the requirements for the **Pet Health Service** of the My 
 1. The Pet’s Owner can update an existing weight Health metric’s value and timestamp.
 2. A corrected value must be greater than zero. A missing or invalid timestamp fails.
 3. The Pet’s Owner can delete an existing weight Health metric.
-4. After correct or delete, the Health profile’s latest weight equals the latest remaining weight metric by timestamp, or is empty if none remain.
+4. After correct or delete, the Health profile’s latest weight equals the latest remaining weight metric by timestamp, or is empty if none remain. When no Owner override is in effect, recommended daily kilocalories is derived again from that latest weight, or is empty with it (PHS-FR-005).
 5. Correct or delete fails if the caller is not the Pet’s Owner.
 6. Correct or delete fails if the Pet is deactivated.
 7. Correct or delete of a non-existent metric fails.
 
-### PHS-FR-005 — Compute or recalculate recommended daily kilocalories
+### PHS-FR-005 — Derive recommended daily kilocalories
 
-**Description:** The service computes a suggested recommended daily kilocalories from the Pet’s current weight and species, using a simple resting-energy calculation times a service-configured species multiplier.
+**Description:** Without an Owner override, the service derives recommended daily kilocalories from the Pet’s latest weight and species, using a simple resting-energy calculation times a service-configured species multiplier. There is no separate compute or recalculate request.
 
 **Acceptance criteria:**
 
-1. When no Owner override is in effect, the Pet’s Owner can request compute or recalculate. The Health profile’s recommended daily kilocalories is set to the computed suggestion.
-2. Computation uses current profile weight and the Pet’s species from Owner & Pet Manager.
-3. Computation fails if weight is empty, or if the Pet or species cannot be resolved.
-4. Computation fails if the caller is not the Pet’s Owner or the Pet is deactivated.
+1. When no Owner override is in effect, recommended daily kilocalories equals the value derived from the current latest weight and the Pet’s species from Owner & Pet Manager.
+2. Recording, correcting, or deleting a weight Health metric derives the value again when no Owner override is in effect. This includes the first recorded weight.
+3. When latest weight is empty and no Owner override is in effect, recommended daily kilocalories is empty.
+4. A weight write that needs a derivation fails if the Pet’s species cannot be resolved. The weight change is not applied.
 5. Breed, age, and neutered status are not inputs.
-6. Recording a new weight does not by itself overwrite an Owner override (see PHS-FR-006).
+6. A weight change never replaces an Owner override (PHS-FR-006).
 
 ### PHS-FR-006 — Override recommended daily kilocalories
 
-**Description:** The Owner sets recommended daily kilocalories manually. The override remains until the Owner explicitly recalculates (PHS-FR-005).
+**Description:** The Owner sets recommended daily kilocalories manually. The override remains until the Owner clears it.
 
 **Acceptance criteria:**
 
-1. The Pet’s Owner can set recommended daily kilocalories to a value greater than zero.
-2. After override, get Health profile returns that value.
-3. Subsequent weight recordings do not change the overridden recommended daily kilocalories.
-4. Explicit recalculate (PHS-FR-005) replaces the override with a freshly computed suggestion.
-5. Override fails if the caller is not the Pet’s Owner or the Pet is deactivated.
+1. The Pet’s Owner can set recommended daily kilocalories to a value greater than zero. Setting it again replaces the earlier override.
+2. After override, get Health profile returns that value and shows that an override is in effect.
+3. Subsequent weight recordings, corrections, and deletions do not change the overridden recommended daily kilocalories.
+4. The Pet’s Owner can clear the override. Recommended daily kilocalories is then derived from the current latest weight and species (PHS-FR-005), or is empty when latest weight is empty. Clearing when no override is in effect succeeds and changes nothing.
+5. Set or clear fails if the caller is not the Pet’s Owner or the Pet is deactivated. Clear fails if a derivation is needed and the Pet’s species cannot be resolved.
 
 ### PHS-FR-007 — Create Meal
 
@@ -195,7 +197,7 @@ This document defines the requirements for the **Pet Health Service** of the My 
 
 ### PHS-FR-010 — Set Wash schedule
 
-**Description:** The Owner sets the Wash schedule for a Pet: a start date and a recurring interval in days.
+**Description:** The Owner sets, changes, reads, or deletes the Wash schedule for a Pet: a start date and a recurring interval in days.
 
 **Acceptance criteria:**
 
@@ -204,8 +206,12 @@ This document defines the requirements for the **Pet Health Service** of the My 
 3. Until a schedule is set, next due is not defined (PHS-FR-012 returns not due).
 4. The Owner can later change the interval, and can replace the start date with a date on or after the current date. An earlier replacement fails.
 5. The replacement start date becomes the anchor. Washes before it do not move next due.
-6. Set or update fails if the caller is not the Pet’s Owner or the Pet is deactivated.
+6. Set, update, or delete fails if the caller is not the Pet’s Owner or the Pet is deactivated.
 7. The service does not apply a species-based default interval.
+8. The current date is the UTC date.
+9. Setting a new schedule fails while one already exists. Changing or deleting fails while none exists.
+10. The Pet’s Owner can read the schedule. Reads remain allowed when the Pet is deactivated.
+11. The Pet’s Owner can hard-delete the schedule. Washes remain. Next due is then not defined until a new schedule is set.
 
 ### PHS-FR-011 — Add / list / update / delete Wash
 
@@ -222,12 +228,12 @@ This document defines the requirements for the **Pet Health Service** of the My 
 
 ### PHS-FR-012 — Get next appointed Wash
 
-**Description:** The service returns when the next Wash is due from the Wash schedule anchor and later Washes.
+**Description:** The service returns the calendar date when the next Wash is due, from the Wash schedule anchor and later Washes.
 
 **Acceptance criteria:**
 
 1. When a Wash schedule is configured and no Wash has a timestamp on or after the start date, next due is the start date.
-2. When at least one Wash has a timestamp on or after the start date, next due is the latest of those timestamps plus the interval in days.
+2. When at least one Wash has a timestamp on or after the start date, next due is the UTC date of the latest of those timestamps plus the interval in days.
 3. Washes timestamped before the start date do not change next due.
 4. When no Wash schedule is configured, the call returns a distinguishable not-due outcome.
 5. Only the Pet’s Owner may request next due.
@@ -250,11 +256,12 @@ This document defines the requirements for the **Pet Health Service** of the My 
 
 **Acceptance criteria:**
 
-1. The Pet’s Owner can create a Vet visit with required **date**, **time**, **clinic name**, and **reason or summary**.
+1. The Pet’s Owner can create a Vet visit with required **when it happened** (an instant), **clinic name**, and **reason or summary**.
 2. The Pet’s Owner can get, list, update, and hard-delete Vet visits for the Pet.
 3. Create or update fails if any required field is missing.
 4. Writes fail if the caller is not the Pet’s Owner or the Pet is deactivated. Reads remain allowed when the Pet is deactivated.
 5. Operations on a non-existent Vet visit fail in a way distinguishable from success.
+6. Hard-deleting a Vet visit keeps every Medication that linked to it and removes that link.
 
 ### PHS-FR-015 — Create / get / list / update / delete Medication
 
@@ -262,7 +269,7 @@ This document defines the requirements for the **Pet Health Service** of the My 
 
 **Acceptance criteria:**
 
-1. The Pet’s Owner can create a Medication with required **drug name**, **dosage instructions**, and **start**. **End** may be omitted.
+1. The Pet’s Owner can create a Medication with required **drug name**, **dosage instructions**, and **start date**. **End date** may be omitted. When present, the end date must be on or after the start date.
 2. An optional Vet visit id may be supplied. If supplied, it must belong to the same Pet.
 3. A Medication may be created with no Vet visit link.
 4. The Pet’s Owner can get, list, update, and hard-delete Medications for the Pet.
@@ -316,7 +323,7 @@ This document defines the requirements for the **Pet Health Service** of the My 
 
 **Acceptance criteria:**
 
-1. Under **normal load**, p95 response time is **< 2s** for: record, correct, or delete weight metrics; compute or override recommended kilocalories; Meal create, update, or delete; Wash schedule set; Wash create, update, or delete; Vet visit create, update, or delete; Medication create, update, or delete; and activity-duration metric create, correct, or delete.
+1. Under **normal load**, p95 response time is **< 2s** for: record, correct, or delete weight metrics; set or clear the recommended daily kilocalories override; Meal create, update, or delete; Wash schedule set, update, or delete; Wash create, update, or delete; Vet visit create, update, or delete; Medication create, update, or delete; and activity-duration metric create, correct, or delete.
 2. The metric refers to the service’s handling time under normal load (exact harness defined in the test plan).
 
 ### PHS-NFR-003 — Owner data isolation

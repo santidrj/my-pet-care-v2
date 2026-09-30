@@ -1,0 +1,27 @@
+$kind: http-request
+description: |
+  PHS-FR-004. Hard delete. Latest weight and, with no override in effect,
+  recommended daily kilocalories are derived again, and are `null` when no
+  weight metric remains.
+url: '{{baseUrl}}/weight-metrics/:metricId'
+method: DELETE
+headers:
+  Accept: application/json
+pathVariables:
+  - key: metricId
+    value: '{{weightMetricId}}'
+    disabled: false
+    description: (Required) Weight Health metric id returned on record.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 204', function () {
+        pm.response.to.have.status(204);
+      });
+examples: ./.resources/Hard-delete weight Health metric.resources/examples
+order: 5000

@@ -1,0 +1,45 @@
+$kind: http-example
+name: |
+  The metric belongs to a different Pet (`urn:my-pet-care:conflict`), or
+  the Pet is deactivated (`urn:my-pet-care:pet-deactivated`).
+request:
+  url: '{{baseUrl}}/activity-duration-metrics/:activityId'
+  method: PUT
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: 'Added as a part of security scheme: bearer'
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: activityId
+      value: <uuid>
+      disabled: false
+      description: (Required) Activity id from Activity Manager. Also the id of its activity-duration
+        Health metric.
+    - key: baseUrl
+      value: '{{baseUrl}}'
+      description: ''
+  body:
+    type: json
+    content: |-
+      {
+        "petId": "44444444-4444-4444-8444-444444444444",
+        "durationMinutes": 30,
+        "timestamp": "2026-09-28T08:30:00.000Z"
+      }
+response:
+  statusCode: 409
+  statusText: Conflict
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "type": "urn:my-pet-care:conflict",
+        "title": "Conflict",
+        "status": 409,
+        "detail": "The request conflicts with the current state of the resource."
+      }
+order: 7000

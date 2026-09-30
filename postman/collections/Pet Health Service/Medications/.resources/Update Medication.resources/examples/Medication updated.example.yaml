@@ -1,0 +1,42 @@
+$kind: http-example
+request:
+  url: '{{baseUrl}}/medications/:medicationId'
+  method: PATCH
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: 'Added as a part of security scheme: bearer'
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: medicationId
+      value: <uuid>
+      disabled: false
+      description: (Required) Medication id returned on create.
+    - key: baseUrl
+      value: '{{baseUrl}}'
+      description: ''
+  body:
+    type: json
+    content: |-
+      {
+        "endDate": "2026-09-29"
+      }
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "id": "99999999-9999-4999-8999-999999999999",
+        "petId": "44444444-4444-4444-8444-444444444444",
+        "drugName": "Amoxicillin",
+        "dosageInstructions": "250 mg twice a day with food",
+        "startDate": "2026-09-15",
+        "endDate": "2026-09-29",
+        "vetVisitId": "88888888-8888-4888-8888-888888888888"
+      }
+order: 1000

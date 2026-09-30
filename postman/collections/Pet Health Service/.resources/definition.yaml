@@ -1,0 +1,44 @@
+$kind: collection
+name: Pet Health Service
+description: |
+  REST API for the Pet Health Service (ADR-0004).
+
+  Behavioral requirements: `docs/requirements/pet-health-service.md`.
+  HTTP route map: `docs/requirements/pet-health-service-api.md`.
+  OpenAPI: `postman/specs/pet-health-service/openapi.yaml`.
+
+  Owner routes use `ownerAccessToken`. The activity-duration `PUT` and
+  `DELETE` use `platformAccessToken`, an Activity Manager platform JWT.
+  `GET /health` is public. Calories-consumed and activity-duration Health
+  metrics use their Meal or Activity id (ADR-0024).
+  Errors are RFC 9457 Problem Details (ADR-0010, ADR-0014).
+variables:
+  - key: baseUrl
+    value: '{{baseUrl}}'
+  - key: ownerAccessToken
+    value: '{{ownerAccessToken}}'
+  - key: platformAccessToken
+    value: '{{platformAccessToken}}'
+  - key: petId
+    value: '{{petId}}'
+  - key: weightMetricId
+    value: '{{weightMetricId}}'
+  - key: mealId
+    value: '{{mealId}}'
+  - key: activityId
+    value: '{{activityId}}'
+  - key: washId
+    value: '{{washId}}'
+  - key: vetVisitId
+    value: '{{vetVisitId}}'
+  - key: medicationId
+    value: '{{medicationId}}'
+  - key: from
+    value: '{{from}}'
+  - key: to
+    value: '{{to}}'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{ownerAccessToken}}'

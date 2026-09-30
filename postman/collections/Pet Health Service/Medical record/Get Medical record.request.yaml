@@ -1,0 +1,28 @@
+$kind: http-request
+description: |
+  PHS-FR-013. Read-only view of the Pet's Vet visits (`visitedAt`
+  descending) and Medications (`startDate` descending). There is no
+  Medical record create, update, or delete. Allowed when the Pet is
+  deactivated.
+url: '{{baseUrl}}/pets/:petId/medical-record'
+method: GET
+headers:
+  Accept: application/json
+pathVariables:
+  - key: petId
+    value: '{{petId}}'
+    disabled: false
+    description: (Required) Pet id from Owner & Pet Manager.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
+examples: ./.resources/Get Medical record.resources/examples
+order: 1000

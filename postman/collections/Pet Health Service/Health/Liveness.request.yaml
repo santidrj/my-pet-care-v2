@@ -1,0 +1,28 @@
+$kind: http-request
+description: Public process liveness. No Bearer JWT. Not a PHS-FR.
+url: '{{baseUrl}}/health'
+method: GET
+headers:
+  Accept: application/json
+pathVariables:
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+auth:
+  type: noauth
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
+      if (pm.response.code !== 200) {
+        return;
+      }
+      pm.test('liveness body is ok', function () {
+        pm.expect(pm.response.json()).to.eql({ status: 'ok' });
+      });
+examples: ./.resources/Liveness.resources/examples
+order: 1000

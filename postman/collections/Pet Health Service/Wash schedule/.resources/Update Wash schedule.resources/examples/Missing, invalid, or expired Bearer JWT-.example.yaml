@@ -1,0 +1,40 @@
+$kind: http-example
+name: Missing, invalid, or expired Bearer JWT.
+request:
+  url: '{{baseUrl}}/pets/:petId/wash-schedule'
+  method: PATCH
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: 'Added as a part of security scheme: bearer'
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: petId
+      value: <uuid>
+      disabled: false
+      description: (Required) Pet id from Owner & Pet Manager.
+    - key: baseUrl
+      value: '{{baseUrl}}'
+      description: ''
+  body:
+    type: json
+    content: |-
+      {
+        "intervalDays": 21
+      }
+response:
+  statusCode: 401
+  statusText: Unauthorized
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "type": "urn:my-pet-care:unauthorized",
+        "title": "Unauthorized",
+        "status": 401,
+        "detail": "Authentication is required to access this resource."
+      }
+order: 3000
