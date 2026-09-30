@@ -289,8 +289,13 @@ components:
       name: serviceId
       in: path
       required: true
+      description: |
+        Candidate platform service id. An id outside the five is a validation
+        error only after the setup secret matches. A missing or wrong setup
+        secret is unauthorized even when this id is outside the five.
       schema:
-        $ref: '#/components/schemas/PlatformServiceId'
+        type: string
+        minLength: 1
   responses:
     BadRequest:
       description: Validation failed
@@ -499,14 +504,23 @@ components:
           type: string
           const: client_credentials
         serviceId:
-          $ref: '#/components/schemas/PlatformServiceId'
+          type: string
+          minLength: 1
+          description: |
+            Candidate platform service id. A value outside the five fails
+            the same way as a wrong secret.
         secret:
           type: string
           minLength: 1
     EnsurePlatformClientRequest:
       type: object
       additionalProperties: false
-      required: [secret, active, setupSecret]
+      description: |
+        The setup secret is judged first. An absent, empty, or wrong
+        setup secret is unauthorized and does not change a row, even when
+        secret or active is also absent. After the setup secret matches, a
+        missing secret, a non-boolean active, or a service id outside the
+        five platform service ids is a validation error.
       properties:
         secret:
           type: string

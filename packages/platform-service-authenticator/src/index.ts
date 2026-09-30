@@ -29,4 +29,12 @@ export {
   type PublicRoutePattern,
 } from "./plugin.js";
 
+export {
+  ensurePlatformClient,
+  platformClientStartup,
+  PlatformClientEnsureError,
+  type EnsurePlatformClientOptions,
+  type PlatformClientStartup,
+} from "./ensure.js";
+
 export { unauthorizedProblem } from "@my-pet-care/contracts";

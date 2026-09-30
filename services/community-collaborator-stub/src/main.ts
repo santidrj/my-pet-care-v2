@@ -1,3 +1,7 @@
+import {
+  ensurePlatformClient,
+  platformClientStartup,
+} from "@my-pet-care/platform-service-authenticator";
 import { buildApp } from "./app.js";
 import { createLogger, type Logger } from "./logger.js";
 import { defaultPort, serviceName } from "./service.js";
@@ -57,7 +61,15 @@ if (port === undefined) {
 const communityOwnerIds = parseCommunityOwnerIds(process.env.COMMUNITY_OWNER_IDS);
 const app = buildApp(logger, { communityOwnerIds });
 
+const startup = platformClientStartup("community");
+if (!startup.ok) {
+  logger.error({ service: serviceName, msg: startup.message });
+  await exitAfterFlush(logger, 1);
+  throw new Error(startup.message);
+}
+
 try {
+  await ensurePlatformClient(startup.options);
   await app.ready();
   await new Promise<void>((resolve, reject) => {
     const fail = (err: Error): void => {

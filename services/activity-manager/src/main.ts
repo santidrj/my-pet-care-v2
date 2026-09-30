@@ -1,3 +1,7 @@
+import {
+  ensurePlatformClient,
+  platformClientStartup,
+} from "@my-pet-care/platform-service-authenticator";
 import { buildApp } from "./app.js";
 import { createDatabase } from "./database.js";
 import { createLogger, type Logger } from "./logger.js";
@@ -60,7 +64,16 @@ try {
 
 const app = buildApp(serviceName, logger);
 
+const startup = platformClientStartup(serviceName);
+if (!startup.ok) {
+  logger.error({ service: serviceName, msg: startup.message });
+  await database.close();
+  await exitAfterFlush(logger, 1);
+  throw new Error(startup.message);
+}
+
 try {
+  await ensurePlatformClient(startup.options);
   await app.ready();
   await new Promise<void>((resolve, reject) => {
     const fail = (err: Error): void => {

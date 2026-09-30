@@ -172,7 +172,7 @@ This document defines the requirements for the **Authentication Service** of the
 
 1. The caller submits a service id and a secret. The endpoint does not require a Bearer JWT.
 2. Missing service id or secret fails as a validation error. The secret is not checked when the request is malformed.
-3. On success, the client is active, the secret matches the stored Argon2id hash, and the response includes a Bearer JWT access token that expires in **1 hour**, with `iss` = `my-pet-care:authentication-service`, `aud` = `my-pet-care:platform`, and claim `service` set to that client’s service id among the allowed platform service ids. The response does not include a refresh token. The response includes `expires_in` (seconds) reflecting that lifetime.
+3. On success, the client is active, the secret matches the stored Argon2id hash, and the response includes a Bearer JWT access token that expires in **1 hour**, with `iss` = `my-pet-care:authentication-service`, `aud` = `my-pet-care:platform`, and claim `service` set to that client’s service id among the allowed platform service ids. The response does not include a refresh token. The response includes `expiresIn` (seconds) reflecting that lifetime.
 4. The issued token never carries `ownerId`. A client never receives a token for a different service id.
 5. Unknown service id, wrong secret, and a disabled or unknown client fail the same way. The caller cannot tell those cases apart.
 6. An Owner access token presented instead of client credentials does not yield a platform-service token.

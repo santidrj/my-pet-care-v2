@@ -15,8 +15,13 @@ import {
   internalErrorProblem,
   notFoundProblem,
   problemDetailsSchema,
+  validationFailedProblem,
   type ProblemDetails,
 } from "@my-pet-care/contracts";
+import { registerPlatformServiceAuthenticator } from "@my-pet-care/platform-service-authenticator";
+import type { UseCaseDeps } from "./application/ports.js";
+import { registerRoutes } from "./http/routes.js";
+import { enterCorrelationId } from "./infrastructure/correlation.js";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -95,7 +100,13 @@ function completedFields(
   return fields;
 }
 
-export function buildApp(service: string, logger: Logger) {
+export async function buildApp(options: {
+  service: string;
+  logger: Logger;
+  deps: UseCaseDeps;
+  publicKey: CryptoKey;
+}) {
+  const { service, logger, deps, publicKey } = options;
   const app = Fastify({
     loggerInstance: logger,
     logController: new LogController({ disableRequestLogging: true }),
@@ -106,6 +117,7 @@ export function buildApp(service: string, logger: Logger) {
 
   app.addHook("onRequest", async (request) => {
     request.correlationId = correlationIdFrom(request.headers["request-id"]);
+    enterCorrelationId(request.correlationId);
   });
 
   app.addHook("onResponse", async (request, reply) => {
@@ -130,11 +142,36 @@ export function buildApp(service: string, logger: Logger) {
   });
 
   app.setErrorHandler((error, request, reply) => {
+    if (error !== null && typeof error === "object" && "validation" in error) {
+      failures.set(request, { problemType: validationFailedProblem.type });
+      return sendProblem(reply, validationFailedProblem);
+    }
     failures.set(request, {
       problemType: internalErrorProblem.type,
       error,
     });
     return sendProblem(reply, internalErrorProblem);
+  });
+
+  await registerPlatformServiceAuthenticator(
+    app as unknown as Parameters<typeof registerPlatformServiceAuthenticator>[0],
+    {
+      publicKey,
+      publicRoutes: [
+        { method: "GET", path: "/health" },
+        { method: "POST", path: "/auth/login" },
+        { method: "POST", path: "/auth/refresh" },
+        { method: "POST", path: "/auth/logout" },
+        { method: "POST", path: "/auth/password-reset/request" },
+        { method: "POST", path: "/auth/password-reset/complete" },
+        { method: "POST", path: "/oauth/token" },
+        { method: "PUT", path: "/platform-clients/*" },
+      ],
+    },
+  );
+
+  registerRoutes(app, deps, (request, problemType) => {
+    failures.set(request, { problemType });
   });
 
   app.get(
