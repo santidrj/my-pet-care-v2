@@ -30,7 +30,7 @@ This document defines the requirements for the **Authentication Service** of the
 - Rate limits on login failures, reset links, and client-credentials failures
 - Reading the password hash and active status from Owner & Pet Manager, and failing when that call cannot be completed
 - Client-credentials grant that issues a platform-service access token
-- A registry of platform clients (service id, Argon2id secret hash, active/disabled), seeded at deploy/ops time
+- A registry of platform clients (service id, Argon2id secret hash, active/disabled), ensured by each platform service at startup (ADR-0023)
 
 ### Out of scope
 
@@ -41,7 +41,7 @@ This document defines the requirements for the **Authentication Service** of the
 - Encryption at rest
 - Where the client stores tokens
 - Per-route authorization in other services (those services’ functional requirements; see also `platform-service-authenticator.md`)
-- A public CRUD API for platform clients, and secret-rotation UX or automated rotation orchestration
+- A list, get, or delete API for platform clients, and a separate secret-rotation product (a restarted process sending its current secret is the v1 reload)
 - Per-target (per-service) token audiences
 
 ## Business / domain rules
@@ -64,6 +64,7 @@ This document defines the requirements for the **Authentication Service** of the
 - Only an active platform client receives new tokens. Disabling a client stops new tokens immediately; already-issued platform JWTs remain valid until they expire.
 - There is no refresh token for platform credentials. Renewal is a new client-credentials grant.
 - The client-credentials endpoint does not require a Bearer JWT. An Owner JWT must not be usable to mint a platform-service token.
+- A platform service ensures its own Platform client at startup. The setup secret authorizes that write. A Bearer JWT does not. Missing and wrong setup secrets fail the same way and do not reveal whether a client row exists.
 
 ## Constraints
 
@@ -77,12 +78,12 @@ This document defines the requirements for the **Authentication Service** of the
 
 ## Assumptions
 
-- A mail channel can send one message to an Owner’s email address.
+- A mail channel can send one message to an Owner’s email address. `RESET_LINK_TEMPLATE` contains one `{token}` placeholder, and the message body is that template with the placeholder replaced by the Reset token. `MAIL_SINK=file:<path>` is the v1 channel: each accepted send appends that URL as one line. The Reset token is not written to service logs. A missing sink or a failed write fails the request as mail delivery failed and leaves no Password reset.
 - Owner & Pet Manager can return the hash and active status to this service, and can store a new password from a completed reset.
 - The client IP address is the caller address this service sees.
 - A list of commonly used and known-breached passwords is available to Owner & Pet Manager.
 - Other services keep verifying access tokens locally until those tokens expire.
-- Platform clients are seeded at deploy/ops time with a service id and secret; v1 has no Owner-facing registration of platform clients.
+- Each platform process is given `PLATFORM_SERVICE_SECRET`, `PLATFORM_SETUP_SECRET`, and its service id. `PLATFORM_CLIENT_ACTIVE` is `true` or `false`; when unset it is `true`. Any other value means that process refuses to start. There is no Owner-facing registration of platform clients.
 - Outbound calls to Owner & Pet Manager (credential reads and set-password) present this service’s platform JWT (`service` = `authentication-service`) obtained via the platform-service authenticator.
 
 ## Functional requirements
@@ -177,15 +178,32 @@ This document defines the requirements for the **Authentication Service** of the
 6. An Owner access token presented instead of client credentials does not yield a platform-service token.
 7. The response never includes the cleartext secret or the secret hash.
 
+### AUTH-FR-008 — Ensure platform client
+
+**Description:** A platform service publishes its own Platform client at startup. Authentication Service stores the secret hash and the active flag. The setup secret authorizes the write.
+
+**Acceptance criteria:**
+
+1. The caller submits a service id, a client secret, an active flag, and a setup secret on `PUT /platform-clients/{serviceId}`. The route does not accept a Bearer JWT as that credential.
+2. The setup secret is judged first. When it is absent or wrong, the call fails as unauthorized, including when the client secret or active flag is also absent. Both cases look the same. No row changes. The setup secret is not written to logs or to the response.
+3. When the setup secret matches, a missing client secret, a missing active flag, or a service id outside the five platform service ids fails as a validation error. No row changes.
+4. On success, the service id is one of the five, the setup secret matches, and the response is empty. The client secret is stored only as an Argon2id hash. The active flag is stored as sent.
+5. Repeating the call with the same secret and the same active flag succeeds and does not rehash. A different secret replaces the hash. A different active flag is stored. A disabled client stays disabled across a later startup that again sends `active: false`.
+6. The response never includes the client secret, the setup secret, or the secret hash.
+7. Authentication Service applies its own client in-process before it listens, using the same secret and active flag, and does not call this route for itself.
+8. Any other platform service retries the call for up to 30 seconds and then exits if it has not succeeded. `pnpm dev` starts the processes together.
+9. There is no list, get, or delete of platform clients.
+10. The call is not rate limited. A rejected setup secret does not consume a client-credentials failure slot.
+
 ## Quality attributes (NFRs)
 
 ### AUTH-NFR-001 — Latency
 
-**Description:** Login, refresh, logout, reset, and client-credentials complete within a bound under normal load.
+**Description:** Login, refresh, logout, reset, client-credentials, and ensure platform client complete within a bound under normal load.
 
 **Acceptance criteria:**
 
-1. Under **normal load**, p95 response time is **< 2s** for login, refresh, logout, request password reset, complete password reset, and client-credentials.
+1. Under **normal load**, p95 response time is **< 2s** for login, refresh, logout, request password reset, complete password reset, client-credentials, and ensure platform client.
 2. The metric refers to the service’s handling time under normal load (exact harness defined in the test plan).
 
 ### AUTH-NFR-002 — Credential and token protection
@@ -195,7 +213,7 @@ This document defines the requirements for the **Authentication Service** of the
 **Acceptance criteria:**
 
 1. Calls that carry a password, platform client secret, reset link, or token use **TLS**.
-2. Passwords, password hashes, platform client secrets, platform client secret hashes, and reset secrets are never included in API responses or logs.
+2. Passwords, password hashes, platform client secrets, platform client secret hashes, setup secrets, and reset secrets are never included in API responses or logs.
 3. Encryption at rest is out of scope.
 
 ### AUTH-NFR-003 — Login rate limit
@@ -209,6 +227,9 @@ This document defines the requirements for the **Authentication Service** of the
 3. Both caps count failures for identifiers and addresses that match no Owner.
 4. Try-again-later is distinct from rejected credentials and does not reveal whether an Owner exists.
 5. The Owner is not locked out. A later attempt inside the rules of AUTH-FR-001 can succeed.
+6. A validation failure does not consume a slot.
+7. Any other attempt reserves a slot before the password check or the Owner & Pet Manager call. The reserved slot counts until the attempt finishes, including while the check is still in progress.
+8. A rejected attempt keeps its slot. A successful login, and an attempt that cannot reach Owner & Pet Manager, release the slot reserved for that attempt. Earlier rejected attempts in the window still count.
 
 ### AUTH-NFR-004 — Reset link rate limit
 
@@ -220,6 +241,9 @@ This document defines the requirements for the **Authentication Service** of the
 2. Further reset requests for that email are rejected as try-again-later until the window passes.
 3. The cap counts requests for emails that match no Owner.
 4. Try-again-later does not reveal whether an Owner exists.
+5. A validation failure does not consume a slot.
+6. Any other attempt reserves a slot before the Owner & Pet Manager call. The reserved slot counts until the attempt finishes.
+7. The slot stays when a link is sent and when the email matches no active Owner, including a deactivated Owner. The slot is released when Owner & Pet Manager cannot be reached or the mail send fails, so those failures stay retryable and do not use up the cap.
 
 ### AUTH-NFR-005 — Client-credentials rate limit
 
@@ -232,3 +256,7 @@ This document defines the requirements for the **Authentication Service** of the
 3. Both caps count failures for service ids that match no client.
 4. Try-again-later is distinct from rejected credentials and does not reveal whether a platform client exists.
 5. Successful grants are not limited by these failure caps. The platform client is not permanently locked out; a later attempt inside the rules of AUTH-FR-007 can succeed.
+6. A validation failure does not consume a slot.
+7. Any other attempt reserves a slot before the secret check. The reserved slot counts until the attempt finishes, including while the check is still in progress.
+8. A rejected attempt keeps its slot. A successful grant releases the slot reserved for that attempt. Earlier rejected attempts in the window still count.
+9. Ensure platform client is outside these caps.

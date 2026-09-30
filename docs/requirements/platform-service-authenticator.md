@@ -25,6 +25,7 @@ This document defines the requirements for the **platform-service authenticator*
 
 - Verifying inbound Auth-signed Bearer JWTs (Owner or platform-service claim shape)
 - Obtaining and caching a platform-service access token from Authentication Service (client-credentials) and attaching it on outbound synchronous calls
+- Startup ensure of this service’s Platform client (`PUT /platform-clients/{serviceId}`, AUTH-FR-008) before the process listens, except Authentication Service’s own row, which that service writes in-process
 - An explicit bypass allowlist for public routes
 - Failing closed when a token is missing, invalid, or expired, or when a platform token cannot be obtained
 - Exposing a trusted actor to handlers without enforcing service authorization policy
@@ -36,7 +37,7 @@ This document defines the requirements for the **platform-service authenticator*
 - An access-token denylist or instant revoke of already-issued access tokens
 - mTLS, SPIFFE/SPIRE, or mesh identity as the service-to-service mechanism
 - Where Owner-facing clients store tokens
-- Secret-rotation UX or automated rotation orchestration (deploy-time config reload of new secrets is enough for v1)
+- A separate secret-rotation product (startup ensure of the current env secret and active flag is the v1 reload)
 - Impersonation tokens (a platform service acting as an Owner)
 - Expanding the Community collaborator beyond reserving its claim id in the vocabulary
 
@@ -65,7 +66,7 @@ This document defines the requirements for the **platform-service authenticator*
 ## Assumptions
 
 - Authentication Service can expose a client-credentials endpoint and will sign platform JWTs with trust material other services use to verify Owner JWTs (or a documented sibling key set).
-- Each platform service can be given a unique service id and secret at deploy time.
+- Each platform service can be given a unique service id, a client secret, and the shared setup secret at deploy time. `PLATFORM_CLIENT_ACTIVE` defaults to true.
 - Clock skew between services is small enough that a verification leeway on the order of tens of seconds is enough.
 - The Community collaborator will use the same authenticator and service-id scheme when it lands; until then its id is reserved in the claim vocabulary.
 - A private network path between platform services is not a substitute for token auth. Tokens are still required.
