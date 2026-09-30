@@ -12,7 +12,7 @@ C4Component
         Component(verifier, "Inbound JWT verifier", "jose", "Verifies signature, issuer, audience, expiry, and exactly one Owner or service actor")
         Component(handler, "Service handler", "Application", "Receives a trusted actor; applies per-route authorization")
         Component(outbound, "Outbound credential provider", "Client credentials", "Obtains and presents this service's platform JWT; fails closed if unavailable")
-        ComponentDb(cache, "Platform-token cache", "In memory", "Reuses a token until near expiry; one re-fetch and retry after an expiry-related 401")
+        ComponentDb(cache, "Platform-token cache", "In memory", "Reuses a token until near expiry; one re-fetch and retry after any peer 401")
 
         Rel(publicRoutes, handler, "Bypasses JWT verification")
         Rel(verifier, handler, "Owner id or calling service")

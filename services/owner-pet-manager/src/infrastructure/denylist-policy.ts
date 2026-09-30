@@ -63,10 +63,12 @@ export function createDenylistPasswordPolicy(
 ): PasswordPolicy {
   return {
     validate(password: string): string | undefined {
-      if (password.length < PASSWORD_MIN_LENGTH) {
+      // Length counts Unicode code points, matching JSON Schema minLength/maxLength.
+      const length = Array.from(password).length;
+      if (length < PASSWORD_MIN_LENGTH) {
         return "Password must be at least 8 characters.";
       }
-      if (password.length > PASSWORD_MAX_LENGTH) {
+      if (length > PASSWORD_MAX_LENGTH) {
         return "Password must be at most 128 characters.";
       }
       if (denylist.has(password)) {

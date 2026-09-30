@@ -52,7 +52,7 @@ HTTP method and path mapping for these requirements: [`owner-pet-manager-api.md`
 - Each Pet is managed by exactly one Owner. Creating a Pet assigns the creating Owner as that Pet’s Owner.
 - **Username** and **email** are unique among Owners, including deactivated Owners. Username uniqueness is case-sensitive. Email uniqueness ignores case.
 - A **username** is one or more ASCII letters, digits, `_`, or `-`. An **email** has a single `@`, a non-empty local part, and a domain with a dot and no whitespace. No string is both.
-- A **password** is at least 8 characters and at most as long as the service allows, which is at least 64 characters. Any character is allowed, including spaces. Commonly used or known-breached passwords are rejected. No mix of letters, digits, or symbols is required (ADR-0012).
+- A **password** is 8 to 128 characters, counted as Unicode code points with no normalization (ADR-0018). Any character is allowed, including spaces. Commonly used or known-breached passwords are rejected. No mix of letters, digits, or symbols is required (ADR-0012).
 - Deactivation is soft: the record is retained and marked inactive. It is not a Hard delete.
 - An Owner who is still Community owner of any Community cannot be deactivated until each Community ownership transfer is complete.
 - If Owner & Pet Manager cannot complete the Community-owner check, Owner Deactivation fails and leaves that Owner and their Pets unchanged.
@@ -93,7 +93,7 @@ HTTP method and path mapping for these requirements: [`owner-pet-manager-api.md`
 4. Create fails if **email** does not have a single `@`, a non-empty local part, and a domain with a dot and no whitespace.
 5. Create fails if **username** is already used by another Owner, including a deactivated Owner. The comparison is case-sensitive.
 6. Create fails if **email** is already used by another Owner, including a deactivated Owner. The comparison ignores case.
-7. Create fails if **password** is shorter than 8 characters, longer than the allowed maximum (at least 64 characters), or on the list of commonly used or known-breached passwords.
+7. Create fails if **password** is shorter than 8 characters, longer than 128 characters, or on the list of commonly used or known-breached passwords.
 8. Create fails if any required field (username, email, password) is missing.
 9. On success, the Owner is active and can be retrieved by id or username.
 10. On success, **Pet list visibility** is **private** (see OPM-FR-011).
@@ -123,7 +123,7 @@ HTTP method and path mapping for these requirements: [`owner-pet-manager-api.md`
 3. Update fails if the new **email** does not have a single `@`, a non-empty local part, and a domain with a dot and no whitespace.
 4. Update fails if the new **username** is already used by another Owner, including a deactivated Owner. The comparison is case-sensitive.
 5. Update fails if the new **email** is already used by another Owner, including a deactivated Owner. The comparison ignores case.
-6. Update fails if the new **password** is shorter than 8 characters, longer than the allowed maximum (at least 64 characters), or on the list of commonly used or known-breached passwords.
+6. Update fails if the new **password** is shorter than 8 characters, longer than 128 characters, or on the list of commonly used or known-breached passwords.
 7. On a successful password change, this service tells the Authentication Service to revoke that Owner’s refresh tokens. The update still succeeds if that call cannot be completed.
 8. Update of a non-existent Owner fails.
 9. Update of a deactivated Owner fails.
@@ -281,7 +281,7 @@ HTTP method and path mapping for these requirements: [`owner-pet-manager-api.md`
 **Acceptance criteria:**
 
 1. The Authentication Service can set a new **password** for an existing Owner by id.
-2. Set fails if **password** is shorter than 8 characters, longer than the allowed maximum (at least 64 characters), or on the list of commonly used or known-breached passwords.
+2. Set fails if **password** is shorter than 8 characters, longer than 128 characters, or on the list of commonly used or known-breached passwords.
 3. Set of a non-existent Owner fails.
 4. Set of a deactivated Owner fails.
 5. On success, this service tells the Authentication Service to revoke that Owner’s refresh tokens. The password change still succeeds if that call cannot be completed.

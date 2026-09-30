@@ -86,8 +86,8 @@ const setPasswordBody = z.object({
 
 const createPetBody = z.object({
   name: z.string().min(1),
-  species: z.string().min(1),
-  sex: z.string().min(1),
+  species: z.enum(["dog", "cat"]),
+  sex: z.enum(["male", "female", "unknown"]),
   breed: z.string().min(1).optional(),
   dateOfBirth: z.string().min(1).optional(),
   photo: z.string().min(1).optional(),
@@ -96,8 +96,8 @@ const createPetBody = z.object({
 const updatePetBody = z
   .object({
     name: z.string().min(1).optional(),
-    species: z.string().min(1).optional(),
-    sex: z.string().min(1).optional(),
+    species: z.enum(["dog", "cat"]).optional(),
+    sex: z.enum(["male", "female", "unknown"]).optional(),
     breed: z.string().min(1).nullable().optional(),
     dateOfBirth: z.string().min(1).nullable().optional(),
     photo: z.string().min(1).nullable().optional(),

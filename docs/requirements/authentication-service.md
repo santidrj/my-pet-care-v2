@@ -72,7 +72,7 @@ This document defines the requirements for the **Authentication Service** of the
 - The Owner password hash is an Argon2id string stored by Owner & Pet Manager (ADR-0012, which supersedes ADR-0009). This service verifies that hash. It does not share Owner & Pet Manager’s database.
 - Platform client secrets are stored by this service as Argon2id hashes (same family as ADR-0012). Cleartext secrets are not retained after provisioning.
 - The Owner hash and active status are read from Owner & Pet Manager over a synchronous call. The Owner hash is readable by this service only, not by Owners or other clients.
-- Owner & Pet Manager enforces password strength on create and on password change: at least 8 characters, at least 64 characters allowed, any character including spaces, and rejection of commonly used or known-breached passwords (ADR-0012). No mix of letters, digits, or symbols is required. Login does not re-check strength.
+- Owner & Pet Manager enforces password strength on create and on password change: 8 to 128 characters (ADR-0018), any character including spaces, and rejection of commonly used or known-breached passwords (ADR-0012). No mix of letters, digits, or symbols is required. Login does not re-check strength.
 - Each service keeps its own data. Cross-service calls are synchronous, as in ADR-0002.
 
 ## Assumptions
@@ -171,7 +171,7 @@ This document defines the requirements for the **Authentication Service** of the
 
 1. The caller submits a service id and a secret. The endpoint does not require a Bearer JWT.
 2. Missing service id or secret fails as a validation error. The secret is not checked when the request is malformed.
-3. On success, the client is active, the secret matches the stored Argon2id hash, and the response includes a Bearer JWT access token that expires in **1 hour**, with `iss` = `my-pet-care:authentication-service`, `aud` = `my-pet-care:platform`, and claim `service` set to that client’s service id among the allowed platform service ids. The response does not include a refresh token. The response includes `expires_in` (seconds) reflecting that lifetime.
+3. On success, the client is active, the secret matches the stored Argon2id hash, and the response includes a Bearer JWT access token that expires in **1 hour**, with `iss` = `my-pet-care:authentication-service`, `aud` = `my-pet-care:platform`, and claim `service` set to that client’s service id among the allowed platform service ids. The response does not include a refresh token. The response includes `expiresIn` (seconds) reflecting that lifetime.
 4. The issued token never carries `ownerId`. A client never receives a token for a different service id.
 5. Unknown service id, wrong secret, and a disabled or unknown client fail the same way. The caller cannot tell those cases apart.
 6. An Owner access token presented instead of client credentials does not yield a platform-service token.
