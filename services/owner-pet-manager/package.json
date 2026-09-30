@@ -10,12 +10,12 @@
     "test": "tsx --test test/**/*.test.ts"
   },
   "dependencies": {
+    "@fastify/type-provider-zod": "^1.0.0",
     "@my-pet-care/contracts": "workspace:*",
     "@my-pet-care/platform-service-authenticator": "workspace:*",
     "argon2": "^0.44.0",
     "drizzle-orm": "^0.45.3",
     "fastify": "^5.12.5",
-    "fastify-type-provider-zod": "^7.0.0",
     "jose": "^6.1.3",
     "pg": "^8.23.0",
     "pino": "^10.1.0",
