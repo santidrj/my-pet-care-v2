@@ -8,7 +8,7 @@ import {
   serializerCompiler,
   validatorCompiler,
   type ZodTypeProvider,
-} from "fastify-type-provider-zod";
+} from "@fastify/type-provider-zod";
 import type { Logger } from "pino";
 import { z } from "zod";
 import {
