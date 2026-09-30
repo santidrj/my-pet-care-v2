@@ -190,6 +190,26 @@ _Avoid_: auth middleware, API gateway auth, identity provider
 The verified caller identity the platform-service authenticator establishes for a request: either an Owner (by Owner id) or a platform service (by service id). Establishing the trusted actor is not authorization of the operation.
 _Avoid_: principal, subject, authenticated user
 
+**Owner session**:
+The Authentication Service record of a single Owner sign-in. Its refresh tokens belong to that session until it expires or is revoked.
+_Avoid_: login, auth session, cookie session
+
+**Refresh token**:
+The current secret of an Owner session. It is not an access token.
+_Avoid_: session cookie, access token
+
+**Password reset**:
+A single-use, time-limited grant for one Owner to set a new password.
+_Avoid_: reset link, magic link
+
+**Reset token**:
+The secret that proves possession of one Password reset.
+_Avoid_: reset link, magic link
+
+**Platform client**:
+The credential Authentication Service keeps for a platform service so that service can obtain platform-service access tokens for its own service id.
+_Avoid_: service account, OAuth client, platform service
+
 **Species**:
 The Pet’s biological kind as stored by Owner & Pet Manager. Allowed values are `dog` and `cat`. Pet Health Service uses species for recommended daily kilocalories multipliers.
 _Avoid_: animal type, pet type

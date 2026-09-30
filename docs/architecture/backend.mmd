@@ -13,7 +13,7 @@ architecture-beta
     service activityApi(server)[Activity and Share API] in activity
     service activityDb(database)[Activity store] in activity
     service authApi(server)[Owner and platform token API] in auth
-    service authDb(database)[Login and platform-client store] in auth
+    service authDb(database)[Owner-session and platform-client store] in auth
 
     opmApi:B --> T:opmDb
     phsApi:B --> T:phsDb
