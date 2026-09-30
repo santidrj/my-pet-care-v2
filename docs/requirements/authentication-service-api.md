@@ -26,7 +26,7 @@ Failure kinds are named in [`authentication-service.md`](./authentication-servic
 | Failure kind | Status |
 | ------------ | ------ |
 | Validation (malformed identifier/email, missing client fields, unsupported or missing `grantType`, weak reset password) | `400` |
-| Rejected Owner credentials; rejected client credentials; bad or reused refresh on refresh | `401` |
+| Rejected Owner credentials; rejected client credentials (including an unknown `serviceId`, which is `401`, not `400`); bad or reused refresh on refresh | `401` |
 | Revoke notice: missing or invalid JWT | `401` |
 | Revoke notice: platform JWT whose `service` is not `owner-pet-manager` | `403` |
 | Reset did not start (unknown email or deactivated Owner); invalid, expired, or already-used reset link | `404` |

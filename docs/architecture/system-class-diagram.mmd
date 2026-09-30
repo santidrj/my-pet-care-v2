@@ -1,3 +1,6 @@
+%% Field names follow the OpenAPI specs in postman/specs (ADR-0021).
+%% Pet Health Service has no spec yet; its fields follow docs/requirements/pet-health-service.md.
+%% `+` fields appear on the wire. `-` fields are internal state that no API returns as an entity field.
 classDiagram
     direction TB
 
@@ -6,20 +9,21 @@ classDiagram
             +id
             +username
             +email
-            +passwordHash
-            +photoRef
+            -passwordHash
+            +photo
             +petListVisibility
-            +deactivated
+            +active
         }
         class Pet {
             +id
+            +ownerId
             +name
             +species
             +breed
             +dateOfBirth
             +sex
-            +photoRef
-            +deactivated
+            +photo
+            +active
         }
         class PetSummary {
             +id
@@ -28,7 +32,7 @@ classDiagram
             +breed
             +dateOfBirth
             +sex
-            +photoRef
+            +photo
         }
     }
 
@@ -45,6 +49,7 @@ classDiagram
             +dimension
             +value
             +timestamp
+            +activityId
         }
         class Meal {
             +id
@@ -82,6 +87,7 @@ classDiagram
             +dosageInstructions
             +start
             +end
+            +vetVisitId
         }
         class MedicalRecord {
             <<view>>
@@ -100,30 +106,28 @@ classDiagram
         class Activity {
             +id
             +petId
+            +activityTypeId
             +timestamp
             +durationMinutes
             +activityAmount
             +caloriesBurned
-            +caloriesOverride
+            +calorieOverride
             +notes
             +mediaRefs
-        }
-        class GpsActivity {
             +route
         }
         class Share {
             +id
-            +audienceKind
-            +audienceId
-            +externalLinkToken
-            +revoked
+            +activityId
+            +audience
+            -revoked
         }
         class ShareSnapshot {
             <<view>>
             +petDisplayName
             +activityTypeLabel
             +timestamp
-            +duration
+            +durationMinutes
             +caloriesBurned
             +activityAmount
             +notes
@@ -134,25 +138,25 @@ classDiagram
 
     namespace AuthenticationService {
         class OwnerSession {
-            +id
-            +ownerId
-            +issuedAt
-            +expiresAt
+            -id
+            -ownerId
+            -issuedAt
+            -expiresAt
         }
         class RefreshToken {
-            +id
-            +rotated
+            -id
+            -rotated
         }
         class PasswordReset {
-            +id
-            +ownerId
-            +expiresAt
-            +used
+            -id
+            -ownerId
+            -expiresAt
+            -used
         }
         class PlatformClient {
-            +serviceId
-            +secretHash
-            +active
+            -serviceId
+            -secretHash
+            -active
         }
         class ClientCredentialsGrant {
             <<service>>
@@ -177,7 +181,6 @@ classDiagram
     Owner "0..1" --> "*" ActivityType : custom
     Pet ..> Activity : petId
     Activity "*" --> "1" ActivityType
-    Activity <|-- GpsActivity
     Activity "1" --> "1" HealthMetric : activity-duration
     Activity "1" --> "*" Share
     Share ..> ShareSnapshot : resolve
@@ -187,7 +190,8 @@ classDiagram
     ClientCredentialsGrant --> PlatformClient : authenticates against registry
 
     note for MedicalRecord "Vet visits and Medications together"
-    note for Share "Audience: Owner, Forum, Group activity, or external link"
+    note for Share "audience is owner (recipientOwnerId), forum (forumId), group-activity (groupActivityId), or external (link, summary)"
     note for OwnerSession "Access token is issued and not stored. Password hash is not copied."
     note for RefreshToken "Recognized until the Owner session ends. The secret is not stored."
+    note for Activity "route is present if and only if the Activity type is GPS-capable (a GPS Activity)"
     note for ClientCredentialsGrant "Platform access token is issued and not stored"

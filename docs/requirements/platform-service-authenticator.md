@@ -50,7 +50,7 @@ This document defines the requirements for the **platform-service authenticator*
 - Owner JWTs must carry `ownerId`, `aud` = `my-pet-care`, and `iss` = `my-pet-care:authentication-service`. Platform-service JWTs must carry `service` (exactly one of `owner-pet-manager`, `pet-health-service`, `activity-manager`, `authentication-service`, `community`), `aud` = `my-pet-care:platform`, and the same `iss`.
 - Platform-service JWT claim `service` names exactly one calling service among the allowed ids above.
 - There is no refresh token for platform credentials. The authenticator re-requests from Authentication Service when the cached token is expired or near expiry.
-- Cached outbound platform tokens are refreshed before expiry (with a skew margin). A peer 401 attributable to expiry triggers one re-fetch and one retry.
+- Cached outbound platform tokens are refreshed before expiry (with a skew margin). Any peer 401 on a call that presented a platform JWT triggers one re-fetch and one retry. Peer 401 bodies are uniform (ADR-0014), so the authenticator cannot tell an expiry 401 from any other.
 - Public allowlisted routes never require a JWT. All other routes fail closed.
 - Establishing the actor is not authorizing the operation. Each service’s functional requirements still decide allow or deny.
 
@@ -93,7 +93,7 @@ This document defines the requirements for the **platform-service authenticator*
 1. The outbound call includes `Authorization: Bearer` with a platform-service JWT whose claims name **this** service only.
 2. The token is obtained from Authentication Service via client-credentials using this service’s configured id and secret.
 3. A usable cached token is reused until the refresh-before-expiry margin; the authenticator does not hit Authentication Service on every outbound call under steady load.
-4. Near expiry, or after a peer 401 attributable to expiry, the authenticator re-fetches once and retries the outbound call once.
+4. Near expiry, or after any peer 401 on a call that presented a platform JWT, the authenticator re-fetches once and retries the outbound call once. A second 401 or a failed grant fails closed.
 5. There is no platform refresh token; renewal is a new client-credentials grant.
 
 ### PSA-FR-003 — Public route bypass allowlist
@@ -129,7 +129,7 @@ This document defines the requirements for the **platform-service authenticator*
 
 **Acceptance criteria:**
 
-1. A successful client-credentials grant returns a Bearer JWT access token that expires in **1 hour (3600 seconds)**, with `iss` = `my-pet-care:authentication-service`, `aud` = `my-pet-care:platform`, claim `service` naming exactly one platform service, and `expires_in` in the response.
+1. A successful client-credentials grant returns a Bearer JWT access token that expires in **1 hour (3600 seconds)**, with `iss` = `my-pet-care:authentication-service`, `aud` = `my-pet-care:platform`, claim `service` naming exactly one platform service, and `expiresIn` (seconds) in the response.
 2. A client may obtain a token only for its own configured service id. Validation errors, rejected credentials, disabled/unknown clients, and try-again-later (AUTH-NFR-005) fail the obtainment path; the authenticator does not present a token from a failed grant.
 3. Owner access tokens remain as defined by Authentication Service requirements (15-minute access tokens, `ownerId`, `aud` = `my-pet-care`); platform tokens do not use a refresh token.
 
