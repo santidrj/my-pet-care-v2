@@ -1,29 +1,23 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import pino from "pino";
-import { z } from "zod";
 import { validationFailedProblem } from "@my-pet-care/contracts";
 import { buildApp } from "../src/app.ts";
+import { createHarness } from "./harness.ts";
 
 describe("authentication service skeleton", () => {
   it("returns 400 validation-failed when the body fails schema validation", async () => {
-    const app = await buildApp(
-      "authentication-service",
-      pino({ level: "silent" }),
-    );
-    app.post(
-      "/widgets",
-      {
-        schema: {
-          body: z.object({ name: z.string().min(1) }),
-        },
-      },
-      async () => ({ ok: true }),
-    );
+    const harness = await createHarness();
+    const app = await buildApp({
+      service: "authentication-service",
+      logger: pino({ level: "silent" }),
+      deps: harness.deps,
+      publicKey: harness.publicKey,
+    });
 
     const response = await app.inject({
       method: "POST",
-      url: "/widgets",
+      url: "/auth/login",
       payload: {},
     });
 

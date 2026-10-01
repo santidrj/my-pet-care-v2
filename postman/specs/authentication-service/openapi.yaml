@@ -3,14 +3,14 @@ info:
   title: Authentication Service
   version: 0.1.0
   description: |
-    REST API for the Authentication Service (ADR-0004, ADR-0016, ADR-0017).
+    REST API for the Authentication Service (ADR-0004, ADR-0016, ADR-0017, ADR-0023).
 
     Behavioral requirements: `docs/requirements/authentication-service.md`.
     HTTP route map: `docs/requirements/authentication-service-api.md`.
 
     Owner session and client-credentials routes are public (no Bearer JWT).
     Token revocations require an Owner & Pet Manager platform JWT.
-    Errors use RFC 9457 Problem Details (ADR-0010, ADR-0014). At runtime the
+    Errors use RFC 9457 Problem Details (ADR-0010, ADR-0014, ADR-0022). At runtime the
     error Content-Type is `application/problem+json`; this OpenAPI file
     documents those bodies under `application/json` so Postman lint accepts
     the media type.
@@ -24,7 +24,7 @@ tags:
   - name: Owner session
     description: Login, refresh, logout, and forgotten-password reset
   - name: Platform clients
-    description: Client-credentials grant for platform-service JWTs
+    description: Startup ensure of a platform client, and client-credentials grant for platform-service JWTs
   - name: Owner & Pet Manager collaborator
     description: Refresh-token revocation notices from Owner & Pet Manager
   - name: Health
@@ -180,6 +180,34 @@ paths:
           $ref: '#/components/responses/ServiceUnavailable'
         '500':
           $ref: '#/components/responses/InternalError'
+  /platform-clients/{serviceId}:
+    parameters:
+      - $ref: '#/components/parameters/ServiceId'
+    put:
+      tags: [Platform clients]
+      operationId: ensurePlatformClient
+      summary: Ensure platform client
+      description: |
+        AUTH-FR-008 / ADR-0023. Not an anonymous write and not a Bearer JWT.
+        The JSON body carries `setupSecret`. An absent or wrong setup secret
+        is unauthorized, including when other fields are also absent, and
+        does not change a row.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnsurePlatformClientRequest'
+      responses:
+        '204':
+          description: Platform client ensured
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /oauth/token:
     post:
       tags: [Platform clients]
@@ -257,6 +285,17 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/Uuid'
+    ServiceId:
+      name: serviceId
+      in: path
+      required: true
+      description: |
+        Candidate platform service id. An id outside the five is a validation
+        error only after the setup secret matches. A missing or wrong setup
+        secret is unauthorized even when this id is outside the five.
+      schema:
+        type: string
+        minLength: 1
   responses:
     BadRequest:
       description: Validation failed
@@ -264,24 +303,52 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            validationFailed:
+              value:
+                type: urn:my-pet-care:validation-failed
+                title: Bad Request
+                status: 400
+                detail: The request is invalid.
     Unauthorized:
       description: Missing or invalid Bearer JWT
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            unauthorized:
+              value:
+                type: urn:my-pet-care:unauthorized
+                title: Unauthorized
+                status: 401
+                detail: Authentication is required to access this resource.
     UnauthorizedCredentials:
       description: Credentials or refresh token not accepted
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            credentialsRejected:
+              value:
+                type: urn:my-pet-care:credentials-rejected
+                title: Unauthorized
+                status: 401
+                detail: The credentials were not accepted.
     Forbidden:
       description: Caller is not allowed for this operation
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            forbidden:
+              value:
+                type: urn:my-pet-care:forbidden
+                title: Forbidden
+                status: 403
+                detail: You are not allowed to perform this operation.
     NotFound:
       description: Resource not found (or indistinguishable reset failure)
       content:
@@ -289,6 +356,13 @@ components:
           schema:
             $ref: '#/components/schemas/ProblemDetails'
           examples:
+            resourceNotFound:
+              summary: Reset did not start, or the reset token is unusable
+              value:
+                type: urn:my-pet-care:resource-not-found
+                title: Not Found
+                status: 404
+                detail: The requested resource was not found.
             routeNotFound:
               summary: No matching route (skeleton)
               value:
@@ -302,12 +376,32 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            tryAgainLater:
+              value:
+                type: urn:my-pet-care:try-again-later
+                title: Too Many Requests
+                status: 429
+                detail: Try again later.
     ServiceUnavailable:
-      description: Dependency unavailable (Owner & Pet Manager or mail delivery)
+      description: Owner & Pet Manager unreachable, or mail delivery failed
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            ownerPetManagerUnavailable:
+              value:
+                type: urn:my-pet-care:owner-pet-manager-unavailable
+                title: Service Unavailable
+                status: 503
+                detail: Owner & Pet Manager could not be reached.
+            mailDeliveryFailed:
+              value:
+                type: urn:my-pet-care:mail-delivery-failed
+                title: Service Unavailable
+                status: 503
+                detail: The message could not be sent.
     InternalError:
       description: Unexpected failure
       content:
@@ -411,6 +505,27 @@ components:
         secret:
           type: string
           minLength: 1
+    EnsurePlatformClientRequest:
+      type: object
+      additionalProperties: false
+      description: |
+        The setup secret is judged first. An absent, empty, or wrong
+        setup secret is unauthorized and does not change a row, even when
+        secret or active is also absent. After the setup secret matches, a
+        missing secret, a non-boolean active, or a service id outside the
+        five platform service ids is a validation error.
+      properties:
+        secret:
+          type: string
+          minLength: 1
+          description: Platform client secret. Stored only as an Argon2id hash.
+        active:
+          type: boolean
+          description: When false, client-credentials issues no new token for this service id.
+        setupSecret:
+          type: string
+          minLength: 1
+          description: Shared provisioning credential. Not a platform client secret.
     TokenRevocationRequest:
       type: object
       additionalProperties: false

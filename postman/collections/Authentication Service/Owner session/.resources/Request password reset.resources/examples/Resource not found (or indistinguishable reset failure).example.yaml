@@ -21,9 +21,9 @@ response:
     type: json
     content: |-
       {
-        "type": "urn:my-pet-care:not-found",
+        "type": "urn:my-pet-care:resource-not-found",
         "title": "Not Found",
         "status": 404,
-        "detail": "No route matches this request."
+        "detail": "The requested resource was not found."
       }
 order: 3000
