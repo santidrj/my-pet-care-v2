@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "DATABASE_URL=postgresql://my_pet_care:my_pet_care@localhost:5432/authentication_service PORT=3004 tsx watch src/main.ts",
+    "dev": "tsx watch src/main.ts",
     "start": "node dist/main.js",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
@@ -13,6 +13,7 @@
     "@fastify/type-provider-zod": "^1.0.0",
     "@my-pet-care/contracts": "workspace:*",
     "@my-pet-care/platform-service-authenticator": "workspace:*",
+    "@my-pet-care/service-config": "workspace:*",
     "@my-pet-care/service-skeleton": "workspace:*",
     "argon2": "^0.44.0",
     "drizzle-orm": "^0.45.3",

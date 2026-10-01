@@ -3,13 +3,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "PORT=3005 tsx watch src/main.ts",
+    "dev": "tsx watch src/main.ts",
     "start": "node dist/main.js",
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@my-pet-care/platform-service-authenticator": "workspace:*",
+    "@my-pet-care/service-config": "workspace:*",
     "fastify": "^5.12.5",
     "pino": "^10.1.0"
   },

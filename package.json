@@ -7,12 +7,12 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev": "pnpm --filter @my-pet-care/contracts build && pnpm --filter @my-pet-care/platform-service-authenticator build && pnpm --filter @my-pet-care/service-skeleton build && pnpm --parallel --filter \"./services/*\" dev",
-    "build": "pnpm --filter @my-pet-care/contracts build && pnpm --filter @my-pet-care/platform-service-authenticator build && pnpm --filter @my-pet-care/service-skeleton build && pnpm --filter \"./services/*\" build",
-    "typecheck": "pnpm --filter @my-pet-care/contracts typecheck && pnpm --filter @my-pet-care/contracts build && pnpm --filter @my-pet-care/platform-service-authenticator typecheck && pnpm --filter @my-pet-care/platform-service-authenticator build && pnpm --filter @my-pet-care/service-skeleton typecheck && pnpm --filter @my-pet-care/service-skeleton build && pnpm --filter \"./services/*\" typecheck",
+    "dev": "pnpm --filter @my-pet-care/contracts build && pnpm --filter @my-pet-care/platform-service-authenticator build && pnpm --filter @my-pet-care/service-config build && pnpm --filter @my-pet-care/service-skeleton build && MPC_CONFIG_DIR=./config pnpm --parallel --filter \"./services/*\" dev",
+    "build": "pnpm --filter @my-pet-care/contracts build && pnpm --filter @my-pet-care/platform-service-authenticator build && pnpm --filter @my-pet-care/service-config build && pnpm --filter @my-pet-care/service-skeleton build && pnpm --filter \"./services/*\" build",
+    "typecheck": "pnpm --filter @my-pet-care/contracts typecheck && pnpm --filter @my-pet-care/contracts build && pnpm --filter @my-pet-care/platform-service-authenticator typecheck && pnpm --filter @my-pet-care/platform-service-authenticator build && pnpm --filter @my-pet-care/service-config typecheck && pnpm --filter @my-pet-care/service-config build && pnpm --filter @my-pet-care/service-skeleton typecheck && pnpm --filter @my-pet-care/service-skeleton build && pnpm --filter \"./services/*\" typecheck",
     "test:opm": "pnpm --filter @my-pet-care/owner-pet-manager test",
     "test:opm:persistence": "pnpm --filter @my-pet-care/owner-pet-manager test:persistence",
-    "db:migrate:opm": "pnpm --filter @my-pet-care/owner-pet-manager db:migrate",
+    "db:migrate:opm": "MPC_CONFIG_DIR=./config pnpm --filter @my-pet-care/owner-pet-manager db:migrate",
     "test:auth": "pnpm --filter @my-pet-care/authentication-service test"
   }
 }

@@ -1,6 +1,7 @@
+import { loadDatabaseUrlSync } from "@my-pet-care/service-config";
 import { defineConfig } from "drizzle-kit";
 
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = loadDatabaseUrlSync("ownerPetManager");
 
 export default defineConfig({
   dialect: "postgresql",

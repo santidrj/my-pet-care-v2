@@ -1,0 +1,35 @@
+{
+  "ownerPetManager": {
+    "port": 3001,
+    "logLevel": "info",
+    "authBaseUrl": "http://127.0.0.1:3004",
+    "communityBaseUrl": "http://127.0.0.1:3005",
+    "platformClientActive": true
+  },
+  "petHealthService": {
+    "port": 3002,
+    "logLevel": "info",
+    "authBaseUrl": "http://127.0.0.1:3004",
+    "platformClientActive": true
+  },
+  "activityManager": {
+    "port": 3003,
+    "logLevel": "info",
+    "authBaseUrl": "http://127.0.0.1:3004",
+    "platformClientActive": true
+  },
+  "authenticationService": {
+    "port": 3004,
+    "logLevel": "info",
+    "ownerPetManagerBaseUrl": "http://127.0.0.1:3001",
+    "resetNoSendFloorMs": 1000,
+    "platformClientActive": true
+  },
+  "communityCollaborator": {
+    "port": 3005,
+    "logLevel": "info",
+    "authBaseUrl": "http://127.0.0.1:3004",
+    "communityOwnerIds": [],
+    "platformClientActive": true
+  }
+}

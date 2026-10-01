@@ -1,12 +1,11 @@
 import {
-  publishPlatformClient,
   platformClientStartup,
+  publishPlatformClient,
 } from "@my-pet-care/platform-service-authenticator";
+import { ConfigError, loadMergedConfig, platformProcessEnv } from "@my-pet-care/service-config";
 import { buildApp } from "./app.js";
 import { createLogger, type Logger } from "./logger.js";
-import { defaultPort, serviceName } from "./service.js";
-
-const LOG_LEVELS = new Set(["fatal", "error", "warn", "info", "debug", "trace"]);
+import { serviceName } from "./service.js";
 
 async function exitAfterFlush(logger: Logger, code: number): Promise<never> {
   await new Promise<void>((resolve) => {
@@ -17,51 +16,25 @@ async function exitAfterFlush(logger: Logger, code: number): Promise<never> {
   process.exit(code);
 }
 
-function readPort(value: string | undefined, fallback: number): number | undefined {
-  if (value === undefined) {
-    return fallback;
-  }
-  if (!/^[0-9]+$/.test(value)) {
-    return undefined;
-  }
-  const port = Number(value);
-  if (port < 1 || port > 65535) {
-    return undefined;
-  }
-  return port;
-}
+const merged = await loadMergedConfig().catch((err: unknown) => {
+  const message =
+    err instanceof ConfigError ? err.message : "Configuration could not be loaded.";
+  console.error(message);
+  process.exit(1);
+});
 
-function parseCommunityOwnerIds(value: string | undefined): Set<string> {
-  if (value === undefined || value.trim().length === 0) {
-    return new Set();
-  }
-  return new Set(
-    value
-      .split(",")
-      .map((part) => part.trim())
-      .filter((part) => part.length > 0),
-  );
-}
-
-const requestedLevel = process.env.LOG_LEVEL;
-const logLevel = requestedLevel === undefined ? "info" : requestedLevel;
-const logger = createLogger(LOG_LEVELS.has(logLevel) ? logLevel : "info");
-
-if (!LOG_LEVELS.has(logLevel)) {
-  logger.error({ service: serviceName, msg: "LOG_LEVEL is invalid." });
-  await exitAfterFlush(logger, 1);
-}
-
-const port = readPort(process.env.PORT, defaultPort);
-if (port === undefined) {
-  logger.error({ service: serviceName, msg: "PORT is invalid." });
-  await exitAfterFlush(logger, 1);
-}
-
-const communityOwnerIds = parseCommunityOwnerIds(process.env.COMMUNITY_OWNER_IDS);
+const service = merged.communityCollaborator;
+const logger = createLogger(service.logLevel);
+const communityOwnerIds = new Set(service.communityOwnerIds);
 const app = buildApp(logger, { communityOwnerIds });
 
-const startup = platformClientStartup("community");
+const startup = platformClientStartup(
+  "community",
+  platformProcessEnv(merged.platform, {
+    authBaseUrl: service.authBaseUrl,
+    platformClientActive: service.platformClientActive,
+  }),
+);
 if (!startup.ok) {
   logger.error({ service: serviceName, msg: startup.message });
   await exitAfterFlush(logger, 1);
@@ -73,12 +46,12 @@ try {
   await app.ready();
   await new Promise<void>((resolve, reject) => {
     const fail = (err: Error): void => {
-      app.server.off("error", fail);
+      (app.server as unknown as NodeJS.EventEmitter).removeListener("error", fail);
       reject(err);
     };
     app.server.once("error", fail);
-    app.server.listen({ host: "127.0.0.1", port }, () => {
-      app.server.off("error", fail);
+    app.server.listen({ host: "127.0.0.1", port: service.port }, () => {
+      (app.server as unknown as NodeJS.EventEmitter).removeListener("error", fail);
       resolve();
     });
   });

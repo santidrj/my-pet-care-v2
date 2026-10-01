@@ -1,0 +1,22 @@
+{
+  "platform": {
+    "serviceSecret": "openssl-rand-base64-32",
+    "setupSecret": "openssl-rand-base64-32",
+    "jwtPublicKeyPath": "/path/to/authentication-public.pem"
+  },
+  "ownerPetManager": {
+    "databaseUrl": "postgresql://my_pet_care:my_pet_care@localhost:5432/owner_pet_manager"
+  },
+  "petHealthService": {
+    "databaseUrl": "postgresql://my_pet_care:my_pet_care@localhost:5432/pet_health_service"
+  },
+  "activityManager": {
+    "databaseUrl": "postgresql://my_pet_care:my_pet_care@localhost:5432/activity_manager"
+  },
+  "authenticationService": {
+    "databaseUrl": "postgresql://my_pet_care:my_pet_care@localhost:5432/authentication_service",
+    "jwtPrivateKeyPath": "/path/to/authentication-private.pem",
+    "resetLinkTemplate": "https://example.test/reset?token={token}",
+    "mailSink": "file:/path/to/reset-links.txt"
+  }
+}

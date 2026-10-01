@@ -1,6 +1,7 @@
+import { loadDatabaseUrlSync } from "@my-pet-care/service-config";
 import { defineConfig } from "drizzle-kit";
 
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = loadDatabaseUrlSync("authenticationService");
 if (!databaseUrl) {
   throw new Error("DATABASE_URL is required.");
 }
