@@ -81,11 +81,11 @@ DATABASE_URL=postgresql://my_pet_care:my_pet_care@localhost:5432/owner_pet_manag
   pnpm --filter @my-pet-care/owner-pet-manager db:migrate
 ```
 
-`db:generate` writes into `services/owner-pet-manager/drizzle/` (SQL plus `meta/`). `db:migrate` runs `applyMigrations` from `src/migrate.ts` against `DATABASE_URL`. Do not hand-edit parallel DDL elsewhere.
+`db:generate` writes into `services/owner-pet-manager/drizzle/` (SQL plus `meta/`). The committed migration SQL (for example `drizzle/0000_owners_pets.sql`) is the DDL applied to dev and test databases. `db:migrate` runs `applyMigrations` from `src/migrate.ts` against `DATABASE_URL`. Do not maintain a second, hand-applied DDL path beside `drizzle/`.
 
 ### Persistence tests
 
-The Owner & Pet Manager persistence test resets the test database and applies the same drizzle-kit migrations via `applyMigrations`. It must never target the `owner_pet_manager` (or other service) databases.
+The Owner & Pet Manager persistence test drops `owners`, `pets`, and the drizzle migration journal on the test database, then reapplies the same drizzle-kit migrations via `applyMigrations`. It must never target the `owner_pet_manager` (or other service) databases.
 
 ```bash
 docker compose up -d
@@ -108,7 +108,7 @@ Read that service’s requirements and architecture diagram, then the ADRs in [d
 
 ## API collections
 
-Postman files in this repository are the contract checks.
+Committed OpenAPI specs in [postman/specs/](../postman/specs/) are the REST contract source of truth ([ADR-0021](adr/0021-openapi-specs-are-contract-source-of-truth.md)); CI diffs each service’s generated OpenAPI against its spec. Postman collections and environments exercise a running local stack against those contracts.
 
 | Directory | Contents |
 | --- | --- |

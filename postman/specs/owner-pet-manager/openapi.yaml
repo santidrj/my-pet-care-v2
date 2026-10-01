@@ -10,13 +10,13 @@ info:
 
     `DELETE` on Owner or Pet means **Deactivation** (soft), not a Hard delete.
     `POST /owners` is public (ADR-0015); every other route requires a Bearer JWT
-    (ADR-0011). Errors use RFC 9457 Problem Details (ADR-0010, ADR-0014). At runtime the error Content-Type is `application/problem+json`; this OpenAPI file documents those bodies under `application/json` so Postman lint accepts the media type.
+    (ADR-0016). Errors use RFC 9457 Problem Details (ADR-0010, ADR-0014). At runtime the error Content-Type is `application/problem+json`; this OpenAPI file documents those bodies under `application/json` so Postman lint accepts the media type.
 servers:
   - url: '{baseUrl}'
     description: Local or deployed Owner & Pet Manager base URL
     variables:
       baseUrl:
-        default: http://localhost:3001
+        default: http://127.0.0.1:3001
 tags:
   - name: Owners
     description: Owner identity, profile, Deactivation, and Pet list visibility

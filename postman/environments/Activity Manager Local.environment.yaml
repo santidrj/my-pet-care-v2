@@ -1,7 +1,7 @@
 name: Activity Manager Local
 values:
   - key: baseUrl
-    value: http://localhost:3003
+    value: http://127.0.0.1:3003
     enabled: true
     type: default
     description: Activity Manager base URL (local default port 3003)

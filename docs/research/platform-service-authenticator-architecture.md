@@ -13,11 +13,9 @@ Decided constraints (do not reopen here): shared library (not a gateway); local 
 | Module | What is already sketched | Alignment with this research |
 | --- | --- | --- |
 | `verify-token.ts` | `jwtVerify` with fixed `iss`, dual `aud`, ±60s `clockTolerance`; mutually exclusive Owner/`service` actor extraction; errors collapsed to `TokenVerificationError` | **Apply** path: local verify, audience binding, non-leaky failure. Keep collapsing reasons at the HTTP boundary. |
-| `outbound.ts` | Factory `createOutboundCredentialProvider`; in-memory cache; refresh-before-expiry; `inflight` promise coalescing; authorized `fetch` with one 401 invalidate/retry | **Apply** path for cache + single-flight + one retry. **Gaps:** default skew is **120s** while the HTTP contract requires **300s** ([`platform-service-authenticator-api.md`](../requirements/platform-service-authenticator-api.md)); token-endpoint `fetch` has **no timeout/`AbortSignal`** yet. |
+| `outbound.ts` | Factory `createOutboundCredentialProvider`; in-memory cache; refresh-before-expiry (`DEFAULT_SKEW_MARGIN_SECONDS` = **300**); `inflight` promise coalescing; authorized `fetch` with one 401 invalidate/retry; grant `fetch` uses `AbortSignal.timeout` | **Apply** path for cache + single-flight + one retry + bounded grant timeout. |
 | `plugin.ts` | `fastify-plugin` + `onRequest` hook; `decorateRequest('actor')`; public allowlist; uniform `unauthorizedProblem` | **Apply** Fastify Intercepting Filter. Correct use of `fp` to break encapsulation. |
 | `index.ts` | Re-exports verifier, outbound factory, plugin, and shared unauthorized problem | Sensible public surface; keep verifier usable without Fastify for unit tests. |
-
-Naming drift to resolve in implementation (not by reopening requirements): API trusted actor uses `kind: "platform"`; scaffolding currently uses `kind: "service"`. Prefer the API discriminant.
 
 ## Tactic / pattern fit
 
@@ -38,11 +36,11 @@ Naming drift to resolve in implementation (not by reopening requirements): API t
 | **Strategy / key provider (`getKey` / JWKS)** | `jose` `jwtVerify(jwt, getKey, options)` overload; RFC 9068 key retrieval via AS material | **Partial** | v1 may inject a static public key (current scaffolding). Keep the seam open for JWKS/`createRemoteJWKSet` later without redesigning the plugin. |
 | **Chain of Responsibility** | GoF CoR | **Partial** | Allowlist → verify → handler is a short fixed chain. Do **not** build a general CoR framework inside the package. |
 | **Local verification (no per-request Auth round-trip)** | ADR-0016; PSA-FR-001 / PSA-NFR-001; RFC 9068 local signature + claim checks | **Apply** | Signature/`iss`/`aud`/`exp` locally with `jose`. |
-| **Caching + store-and-reuse until near expiry** | Auth0 Token Best Practices (“store and reuse”); RFC 6749 `expires_in`; PSA-FR-002 / PSA-NFR-002 | **Apply** | In-memory cache until refresh-before-expiry. Default margin must be **300s** per API contract (scaffolding’s 120s should be corrected). |
+| **Caching + store-and-reuse until near expiry** | Auth0 Token Best Practices (“store and reuse”); RFC 6749 `expires_in`; PSA-FR-002 / PSA-NFR-002 | **Apply** | In-memory cache until refresh-before-expiry. Default margin is **300s** per API contract. |
 | **Refresh-before-expiry** | Kubernetes SA token refresh-before-expiry practice (lifetime research note); PSA-NFR-002 | **Apply** | Margin > clock leeway; contract = 5 minutes. |
 | **Single-flight / promise coalescing (stampede avoidance)** | Classic concurrent-refresh coalescing (e.g. Go `singleflight` idea applied as one shared Promise in Node); Bass performance tactics (Manage / schedule concurrent work) | **Apply** | Scaffolding’s `inflight` Promise is the right Node idiom: concurrent `getAccessToken()` share one grant. Prefer coalescing over a heavy mutex library. |
 | **Bounded retry (exactly one)** | Bass availability tactic Retry (bound attempts); PSA-FR-002 peer-401 rule | **Apply** | Invalidate → re-fetch → retry outbound **once**. Second 401 or failed grant fails closed. |
-| **Timeouts on token endpoint** | Bass availability tactic Timeout; Node.js `AbortSignal.timeout(delay)` for `fetch` | **Apply** | Scaffolding lacks this; add a finite timeout on `POST /oauth/token` and treat timeout as grant failure (fail closed). |
+| **Timeouts on token endpoint** | Bass availability tactic Timeout; Node.js `AbortSignal.timeout(delay)` for `fetch` | **Apply** | Finite timeout on `POST /oauth/token`; timeout is grant failure (fail closed). |
 | **Ports / dependency injection (thin)** | ADR-0018 ports-and-adapters for OPM; ADR-0007 rejecting Nest-style DI for these services | **Partial** | Inject `fetch`, clock, keys, allowlist, credentials at the package boundary. Do **not** mirror OPM’s full hexagon inside this widget. |
 | **Clean / Hexagonal depth (entities, use-case layers, etc.)** | ADR-0018 applies to OPM domain; Alistair Cockburn Hexagonal Architecture (ports for *applications*) | **Avoid** (for this package) | Authenticator is a cross-cutting adapter, not a domain. Extra layers buy little and fight Fastify plugin ergonomics. |
 | **Circuit Breaker on client-credentials** | Resilience4j CircuitBreaker (OPEN rejects further calls after failure-rate threshold) | **Avoid** | Requirements already specify fail closed + one retry. Opening a breaker after Auth blips would amplify outages and duplicate bounded-retry policy. Timeouts + single retry suffice for v1. |
@@ -91,8 +89,6 @@ packages/platform-service-authenticator/
 
 | Item | Note |
 | --- | --- |
-| **Skew default mismatch** | Scaffolding `DEFAULT_SKEW_MARGIN_SECONDS = 120` vs contract **300**. Correct toward the contract. |
-| **Actor discriminant naming** | Align scaffolding `kind: "service"` with API `kind: "platform"`. |
 | **Force-refresh vs inflight** | Ensure forced refresh after 401 does not race with a stale coalesced grant in a confusing way; invalidate cache first (already done), then coalesce force refreshes if useful. |
 | **Key rotation** | v1 assumes deploy-time trust material; JWKS Strategy is Partial for later. |
 | **Process-local cache** | Multiple replicas each hold their own token; acceptable for v1 (no shared cache required). |
@@ -103,7 +99,7 @@ packages/platform-service-authenticator/
 1. **Treat the package as a thin Fastify Intercepting Filter + outbound credential Factory**, not as a mini bounded context.
 2. **Apply** authn/authz separation, fail closed, audience/`iss` binding, ±60s leeway, uniform non-leaky 401, no token/secret logging, local `jose` verify, in-memory cache with **300s** refresh margin, promise single-flight, one 401 retry, and grant **timeouts**.
 3. **Avoid** gateway-only auth, introspection/denylist, mTLS/SPIFFE (v1), Circuit Breaker and rate limits in this lib, spoofable identity headers, impersonation, Nest-style DI, and Clean/Hexagon over-layering.
-4. **Keep** the three-module shape already sketched; close the skew-margin, timeout, and actor-naming gaps against the requirements/API docs without redesign.
+4. **Keep** the three-module shape already sketched; treat skew margin, grant timeout, and `kind: "platform"` actor naming as settled in `packages/platform-service-authenticator`.
 
 ## Sources
 
