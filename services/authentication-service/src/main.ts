@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { importSPKI } from "jose";
 import { createOutboundCredentialProvider } from "@my-pet-care/platform-service-authenticator";
+import { clientCredentialsGrantFetch } from "@my-pet-care/service-skeleton";
 import { buildApp } from "./app.js";
 import { ensurePlatformClient } from "./application/ensure-client.js";
 import type { MailChannel, UseCaseDeps } from "./application/ports.js";
@@ -193,6 +194,10 @@ const outbound = createOutboundCredentialProvider({
   tokenEndpoint: `http://127.0.0.1:${port}/oauth/token`,
   serviceId: "authentication-service",
   secret: platformServiceSecret,
+  grantFetch: clientCredentialsGrantFetch({
+    logger,
+    service: serviceName,
+  }),
 });
 
 const deps: UseCaseDeps = {

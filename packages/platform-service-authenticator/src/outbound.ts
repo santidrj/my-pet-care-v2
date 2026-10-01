@@ -11,6 +11,11 @@ export type OutboundCredentialProviderOptions = {
   serviceId: PlatformServiceId;
   secret: string;
   fetch?: typeof globalThis.fetch;
+  /**
+   * Client-credentials call only. Peer calls still use `fetch`, so the grant
+   * can be logged without logging those calls twice.
+   */
+  grantFetch?: typeof globalThis.fetch;
   skewMarginSeconds?: number;
   grantTimeoutMs?: number;
   now?: () => Date;
@@ -66,6 +71,7 @@ export function createOutboundCredentialProvider(
   options: OutboundCredentialProviderOptions,
 ): OutboundCredentialProvider {
   const fetchImpl = options.fetch ?? globalThis.fetch;
+  const grantFetch = options.grantFetch ?? fetchImpl;
   const skewMarginSeconds =
     options.skewMarginSeconds ?? DEFAULT_SKEW_MARGIN_SECONDS;
   const grantTimeoutMs =
@@ -78,7 +84,7 @@ export function createOutboundCredentialProvider(
   async function obtainToken(): Promise<string> {
     let response: Response;
     try {
-      response = await fetchImpl(options.tokenEndpoint, {
+      response = await grantFetch(options.tokenEndpoint, {
         method: "POST",
         headers: {
           "content-type": "application/json",

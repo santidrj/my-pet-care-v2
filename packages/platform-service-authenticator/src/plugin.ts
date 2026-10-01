@@ -21,6 +21,8 @@ export type PublicRoutePattern = {
 
 export type AuthenticatorPluginOptions = VerifyTokenOptions & {
   publicRoutes?: PublicRoutePattern[];
+  /** Called just before the uniform 401 is sent. Used to record the failure for service logs. */
+  onUnauthorized?: (request: FastifyRequest) => void;
 };
 
 declare module "fastify" {
@@ -95,6 +97,7 @@ const authenticatorPlugin: FastifyPluginAsync<AuthenticatorPluginOptions> = asyn
 
     const token = bearerTokenFrom(request);
     if (token === undefined) {
+      options.onUnauthorized?.(request);
       return sendUnauthorized(reply);
     }
 
@@ -103,6 +106,7 @@ const authenticatorPlugin: FastifyPluginAsync<AuthenticatorPluginOptions> = asyn
         publicKey: options.publicKey,
       });
     } catch {
+      options.onUnauthorized?.(request);
       return sendUnauthorized(reply);
     }
   });

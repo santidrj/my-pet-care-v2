@@ -333,6 +333,38 @@ describe("outbound credential provider", () => {
     assert.equal(await provider.getAccessToken(), "fresh-token");
   });
 
+  it("uses grantFetch only for the client-credentials grant", async () => {
+    const grantCalls: string[] = [];
+    const peerCalls: string[] = [];
+    const fetchMock: typeof fetch = async (input) => {
+      peerCalls.push(String(input));
+      return new Response("ok", { status: 200 });
+    };
+    const grantFetch: typeof fetch = async (input) => {
+      grantCalls.push(String(input));
+      return Response.json({
+        accessToken: "token-1",
+        tokenType: "Bearer",
+        expiresIn: 3600,
+      });
+    };
+
+    const provider = createOutboundCredentialProvider({
+      tokenEndpoint: TOKEN_ENDPOINT,
+      serviceId: SERVICE_ID,
+      secret: SECRET,
+      fetch: fetchMock,
+      grantFetch,
+      now: () => new Date("2026-01-01T00:00:00.000Z"),
+    });
+
+    const response = await provider.fetch("https://opm.example/pets");
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(grantCalls, [TOKEN_ENDPOINT]);
+    assert.deepEqual(peerCalls, ["https://opm.example/pets"]);
+  });
+
   it("does not retry more than once after a second peer 401", async () => {
     let tokenFetches = 0;
     let peerHits = 0;

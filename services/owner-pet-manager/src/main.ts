@@ -3,6 +3,7 @@ import {
   createOutboundCredentialProvider,
   publishPlatformClient,
 } from "@my-pet-care/platform-service-authenticator";
+import { clientCredentialsGrantFetch } from "@my-pet-care/service-skeleton";
 import { importSPKI } from "jose";
 import { buildApp } from "./app.js";
 import { createDatabase } from "./database.js";
@@ -155,6 +156,10 @@ const outbound = createOutboundCredentialProvider({
   tokenEndpoint: authTokenUrl,
   serviceId: "owner-pet-manager",
   secret: platformServiceSecret,
+  grantFetch: clientCredentialsGrantFetch({
+    logger,
+    service: serviceName,
+  }),
 });
 
 const deps = {

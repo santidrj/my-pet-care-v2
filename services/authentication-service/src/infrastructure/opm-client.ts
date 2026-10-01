@@ -1,7 +1,7 @@
 import type { OutboundCredentialProvider } from "@my-pet-care/platform-service-authenticator";
+import { loggedFetch } from "@my-pet-care/service-skeleton";
 import type { Logger } from "pino";
 import type { OwnerDirectory, OwnerLookup, SetPasswordResult } from "../application/ports.js";
-import { loggedFetch } from "./outbound-log.js";
 
 const TIMEOUT_MS = 5_000;
 

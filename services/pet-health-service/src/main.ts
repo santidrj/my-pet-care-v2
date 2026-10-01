@@ -62,7 +62,7 @@ try {
   await exitAfterFlush(logger, 1);
 }
 
-const app = buildApp(serviceName, logger);
+const app = await buildApp(serviceName, logger);
 
 const startup = platformClientStartup(serviceName);
 if (!startup.ok) {

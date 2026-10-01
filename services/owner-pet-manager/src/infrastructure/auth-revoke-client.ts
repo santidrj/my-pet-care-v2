@@ -1,9 +1,9 @@
 import type { Logger } from "pino";
+import { loggedFetch } from "@my-pet-care/service-skeleton";
 import type {
   AuthRevocationClient,
   AuthRevocationReason,
 } from "../application/ports.js";
-import { loggedFetch } from "./outbound-log.js";
 import { serviceName } from "../service.js";
 
 export type AuthRevokeClientOptions = {

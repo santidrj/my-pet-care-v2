@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
+import { Writable } from "node:stream";
 import { before, describe, it } from "node:test";
 import { generateKeyPair, SignJWT } from "jose";
-import pino from "pino";
+import pino, { type Logger } from "pino";
+import { unauthorizedProblem } from "@my-pet-care/contracts";
 import { buildApp } from "../src/app.ts";
 import type { UseCaseDeps } from "../src/application/ports.ts";
 import { createTestPasswordHasher } from "../src/infrastructure/argon2-hasher.ts";
@@ -45,7 +47,7 @@ describe("HTTP routes", () => {
       .sign(privateKey);
   }
 
-  async function createTestApp() {
+  async function createTestApp(logger: Logger = pino({ level: "silent" })) {
     deps = {
       store: createInMemoryStore(),
       passwordHasher: createTestPasswordHasher(),
@@ -64,7 +66,7 @@ describe("HTTP routes", () => {
 
     return buildApp({
       service: "owner-pet-manager",
-      logger: pino({ level: "silent" }),
+      logger,
       deps,
       authenticator: { publicKey },
     });
@@ -172,6 +174,48 @@ describe("HTTP routes", () => {
       assert.equal(response.statusCode, 400);
       assert.equal(response.json().type, "urn:my-pet-care:validation-failed");
     }
+    await app.close();
+  });
+
+  it("logs an authenticator 401 with its problemType", async () => {
+    const chunks: string[] = [];
+    const stream = new Writable({
+      write(chunk, _encoding, callback) {
+        chunks.push(String(chunk));
+        callback();
+      },
+    });
+    const logger = pino(
+      {
+        level: "info",
+        formatters: {
+          level(label) {
+            return { level: label };
+          },
+        },
+      },
+      stream,
+    );
+    const app = await createTestApp(logger);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/owners/00000000-0000-7000-8000-000000000001",
+    });
+
+    assert.equal(response.statusCode, 401);
+    assert.deepEqual(response.json(), unauthorizedProblem);
+    const line = chunks
+      .join("")
+      .split("\n")
+      .filter((entry) => entry.length > 0)
+      .map((entry) => JSON.parse(entry) as Record<string, unknown>)
+      .find((entry) => entry.event === "http.request.completed");
+    assert.ok(line);
+    assert.equal(line.problemType, unauthorizedProblem.type);
+    assert.equal(line.statusCode, 401);
+    assert.equal(line.outcome, "failure");
+    assert.equal(line.service, "owner-pet-manager");
     await app.close();
   });
 
