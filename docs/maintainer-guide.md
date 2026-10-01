@@ -15,6 +15,7 @@ pnpm workspace packages are `packages/*` and `services/*` ([pnpm-workspace.yaml]
 | --- | --- | --- |
 | `packages/contracts` | `@my-pet-care/contracts` | Shared contracts used by the services. |
 | `packages/platform-service-authenticator` | `@my-pet-care/platform-service-authenticator` | Shared module that verifies inbound Bearer JWTs and presents platform-service credentials on outbound calls. |
+| `packages/service-skeleton` | `@my-pet-care/service-skeleton` | Shared Fastify shell: validation Problem Details, request logs, correlation, and outbound client logs. |
 | `services/owner-pet-manager` | `@my-pet-care/owner-pet-manager` | Owner & Pet Manager. |
 | `services/pet-health-service` | `@my-pet-care/pet-health-service` | Pet Health Service. |
 | `services/activity-manager` | `@my-pet-care/activity-manager` | Activity Manager. |
@@ -45,9 +46,9 @@ From the repository root:
 
 | Command | What it does |
 | --- | --- |
-| `pnpm dev` | Builds `@my-pet-care/contracts` and `@my-pet-care/platform-service-authenticator`, then starts every package under `services/*`. Each service `dev` script sets `DATABASE_URL` and `PORT`. The stub script sets `PORT` only. |
-| `pnpm build` | Builds the two packages, then every service. |
-| `pnpm typecheck` | Typechecks the two packages, builds them, then typechecks every service. |
+| `pnpm dev` | Builds `@my-pet-care/contracts`, `@my-pet-care/platform-service-authenticator`, and `@my-pet-care/service-skeleton`, then starts every package under `services/*`. Each service `dev` script sets `DATABASE_URL` and `PORT`. The stub script sets `PORT` only. |
+| `pnpm build` | Builds those three packages, then every service. |
+| `pnpm typecheck` | Typechecks those three packages, builds them, then typechecks every service. |
 | `pnpm test:opm` | Runs `@my-pet-care/owner-pet-manager` tests (`tsx --test test/**/*.test.ts`). Persistence tests skip unless `OPM_TEST_DATABASE_URL` is set. |
 | `pnpm test:opm:persistence` | Runs the Owner & Pet Manager Postgres persistence test against `owner_pet_manager_test` (never the dev database). |
 
@@ -55,8 +56,10 @@ Packages with a `test` script:
 
 - `@my-pet-care/owner-pet-manager` (`pnpm test:opm`, `pnpm test:opm:persistence`)
 - `@my-pet-care/platform-service-authenticator` (`pnpm --filter @my-pet-care/platform-service-authenticator test`)
+- `@my-pet-care/service-skeleton` (`pnpm --filter @my-pet-care/service-skeleton test`)
+- `@my-pet-care/pet-health-service`, `@my-pet-care/activity-manager`, and `@my-pet-care/authentication-service` (`pnpm --filter <package> test`)
 
-Pet Health Service, Activity Manager, Authentication Service, and the community-collaborator stub have no `test` script. Owner & Pet Manager’s Postgres persistence tests skip when `OPM_TEST_DATABASE_URL` is unset. `pnpm test:opm` does not set it. Use `pnpm test:opm:persistence` to run them against the dedicated test database.
+The community-collaborator stub has no `test` script. Service and skeleton tests import the built workspace packages, so build `@my-pet-care/contracts`, `@my-pet-care/platform-service-authenticator`, and `@my-pet-care/service-skeleton` first. Owner & Pet Manager’s Postgres persistence tests skip when `OPM_TEST_DATABASE_URL` is unset. `pnpm test:opm` does not set it. Use `pnpm test:opm:persistence` to run them against the dedicated test database.
 
 ## Databases
 

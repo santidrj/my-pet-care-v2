@@ -58,7 +58,7 @@ try {
   await exitAfterFlush(logger, 1);
 }
 
-const app = buildApp(serviceName, logger);
+const app = await buildApp(serviceName, logger);
 
 try {
   await app.ready();

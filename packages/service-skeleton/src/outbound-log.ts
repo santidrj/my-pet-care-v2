@@ -1,4 +1,5 @@
 import type { Logger } from "pino";
+import { problemDetailsSchema } from "@my-pet-care/contracts";
 import { currentCorrelationId } from "./correlation.js";
 
 export type OutboundLogTarget =
@@ -16,6 +17,18 @@ export type OutboundLogOptions = {
   route: string;
 };
 
+const MISSING_CORRELATION_ID = "00000000-0000-0000-0000-000000000000";
+
+function stableOutboundError(cause: unknown): Error {
+  const logged = new Error("The outbound call failed.");
+  const stack = cause instanceof Error ? cause.stack : undefined;
+  const frames = stack?.split("\n").slice(1).join("\n");
+  logged.stack = frames
+    ? `${logged.name}: ${logged.message}\n${frames}`
+    : `${logged.name}: ${logged.message}`;
+  return logged;
+}
+
 function logClientCompleted(
   options: OutboundLogOptions,
   fields: {
@@ -29,7 +42,7 @@ function logClientCompleted(
   const correlationId = currentCorrelationId();
   const line: Record<string, unknown> = {
     service: options.service,
-    correlationId: correlationId ?? "00000000-0000-0000-0000-000000000000",
+    correlationId: correlationId ?? MISSING_CORRELATION_ID,
     event: "http.client.completed",
     outcome: fields.outcome,
     durationMs: fields.durationMs,
@@ -59,6 +72,15 @@ function logClientCompleted(
   options.logger.warn(line);
 }
 
+async function problemTypeFrom(response: Response): Promise<string | undefined> {
+  try {
+    const parsed = problemDetailsSchema.safeParse(await response.clone().json());
+    return parsed.success ? parsed.data.type : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function loggedFetch(
   options: OutboundLogOptions,
   fetchImpl: typeof globalThis.fetch,
@@ -76,25 +98,54 @@ export async function loggedFetch(
     const response = await fetchImpl(input, { ...init, headers });
     const durationMs = Math.round(Date.now() - started);
     const outcome = response.ok ? "success" : "failure";
+    const problemType =
+      outcome === "failure" ? await problemTypeFrom(response) : undefined;
     logClientCompleted(options, {
       outcome,
       durationMs,
       statusCode: response.status,
+      problemType,
     });
     return response;
   } catch (cause) {
     const durationMs = Math.round(Date.now() - started);
-    const err =
-      cause instanceof Error
-        ? cause
-        : new Error("The outbound call failed.");
-    const stable = new Error("The outbound call failed.");
-    stable.stack = err.stack;
     logClientCompleted(options, {
       outcome: "failure",
       durationMs,
-      err: stable,
+      err: stableOutboundError(cause),
     });
     throw cause;
   }
+}
+
+function requestUrl(input: RequestInfo | URL): string {
+  if (typeof input === "string") {
+    return input;
+  }
+  if (input instanceof URL) {
+    return input.toString();
+  }
+  return input.url;
+}
+
+/** Fetch wrapper that logs the Authentication Service client-credentials grant. */
+export function clientCredentialsGrantFetch(options: {
+  logger: Logger;
+  service: string;
+  fetch?: typeof globalThis.fetch;
+}): typeof globalThis.fetch {
+  const fetchImpl = options.fetch ?? globalThis.fetch;
+  return (input, init) =>
+    loggedFetch(
+      {
+        logger: options.logger,
+        service: options.service,
+        target: "authentication-service",
+        method: "POST",
+        route: "/oauth/token",
+      },
+      fetchImpl,
+      requestUrl(input),
+      init,
+    );
 }

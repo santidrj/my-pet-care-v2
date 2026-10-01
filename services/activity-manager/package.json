@@ -6,11 +6,13 @@
     "dev": "DATABASE_URL=postgresql://my_pet_care:my_pet_care@localhost:5432/activity_manager PORT=3003 tsx watch src/main.ts",
     "start": "node dist/main.js",
     "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test test/**/*.test.ts"
   },
   "dependencies": {
     "@fastify/type-provider-zod": "^1.0.0",
     "@my-pet-care/contracts": "workspace:*",
+    "@my-pet-care/service-skeleton": "workspace:*",
     "drizzle-orm": "^0.45.3",
     "fastify": "^5.12.5",
     "pg": "^8.23.0",

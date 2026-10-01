@@ -241,6 +241,40 @@ describe("platform-service authenticator plugin", () => {
     }
   });
 
+  it("notifies onUnauthorized only when a protected route is denied", async () => {
+    const denied: string[] = [];
+    const app = Fastify();
+    await registerPlatformServiceAuthenticator(app, {
+      publicKey,
+      publicRoutes: [{ method: "GET", path: "/health" }],
+      onUnauthorized(request) {
+        denied.push(`${request.method} ${request.url}`);
+      },
+    });
+    app.get("/health", async () => ({ status: "ok" }));
+    app.get("/owners/:ownerId", async () => ({ ok: true }));
+
+    const missing = await app.inject({ method: "GET", url: "/owners/owner-1" });
+    assert.equal(missing.statusCode, 401);
+    const invalid = await app.inject({
+      method: "GET",
+      url: "/owners/owner-1",
+      headers: { authorization: "Bearer not-a-valid-token" },
+    });
+    assert.equal(invalid.statusCode, 401);
+    const health = await app.inject({ method: "GET", url: "/health" });
+    assert.equal(health.statusCode, 200);
+    const token = await signOwner("owner-1");
+    const ok = await app.inject({
+      method: "GET",
+      url: "/owners/owner-1",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    assert.equal(ok.statusCode, 200);
+    assert.deepEqual(denied, ["GET /owners/owner-1", "GET /owners/owner-1"]);
+    await app.close();
+  });
+
   it("rejects empty ownerId alongside service with the uniform unauthorized shape", async () => {
     const app = await buildApp();
     try {
