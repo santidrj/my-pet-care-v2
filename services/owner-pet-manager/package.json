@@ -7,8 +7,10 @@
     "start": "node dist/main.js",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test test/**/*.test.ts"
+    "test": "tsx --test test/**/*.test.ts",
+    "test:persistence": "OPM_TEST_DATABASE_URL=postgresql://my_pet_care:my_pet_care@localhost:5432/owner_pet_manager_test tsx --test test/persistence.test.ts"
   },
+
   "dependencies": {
     "@fastify/type-provider-zod": "^1.0.0",
     "@my-pet-care/contracts": "workspace:*",

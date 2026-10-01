@@ -48,20 +48,39 @@ From the repository root:
 | `pnpm dev` | Builds `@my-pet-care/contracts` and `@my-pet-care/platform-service-authenticator`, then starts every package under `services/*`. Each service `dev` script sets `DATABASE_URL` and `PORT`. The stub script sets `PORT` only. |
 | `pnpm build` | Builds the two packages, then every service. |
 | `pnpm typecheck` | Typechecks the two packages, builds them, then typechecks every service. |
-| `pnpm test:opm` | Runs `@my-pet-care/owner-pet-manager` tests (`tsx --test test/**/*.test.ts`). |
+| `pnpm test:opm` | Runs `@my-pet-care/owner-pet-manager` tests (`tsx --test test/**/*.test.ts`). Persistence tests skip unless `OPM_TEST_DATABASE_URL` is set. |
+| `pnpm test:opm:persistence` | Runs the Owner & Pet Manager Postgres persistence test against `owner_pet_manager_test` (never the dev database). |
 
 Packages with a `test` script:
 
-- `@my-pet-care/owner-pet-manager` (`pnpm test:opm`)
+- `@my-pet-care/owner-pet-manager` (`pnpm test:opm`, `pnpm test:opm:persistence`)
 - `@my-pet-care/platform-service-authenticator` (`pnpm --filter @my-pet-care/platform-service-authenticator test`)
 
-Pet Health Service, Activity Manager, Authentication Service, and the community-collaborator stub have no `test` script. Owner & Pet Manager’s Postgres persistence tests skip when `DATABASE_URL` is unset. `pnpm test:opm` does not set it.
+Pet Health Service, Activity Manager, Authentication Service, and the community-collaborator stub have no `test` script. Owner & Pet Manager’s Postgres persistence tests skip when `OPM_TEST_DATABASE_URL` is unset. `pnpm test:opm` does not set it. Use `pnpm test:opm:persistence` to run them against the dedicated test database.
 
 ## Databases
 
-Compose runs one Postgres server. The image creates `owner_pet_manager`. [docker/postgres/init/01-create-databases.sql](../docker/postgres/init/01-create-databases.sql) creates `pet_health_service`, `activity_manager`, and `authentication_service`.
+Compose runs one Postgres server. The image creates `owner_pet_manager`. [docker/postgres/init/01-create-databases.sql](../docker/postgres/init/01-create-databases.sql) creates `pet_health_service`, `activity_manager`, `authentication_service`, and `owner_pet_manager_test`.
 
 Owner & Pet Manager, Pet Health Service, Activity Manager, and Authentication Service each have `src/schema.ts` and `drizzle.config.ts`. [ADR-0006](adr/0006-drizzle-orm.md) says schema changes ship as drizzle-kit migrations owned by that service. This repository has no migration directory and no migrate script. Startup checks that Postgres accepts a connection. It does not apply `src/schema.ts`.
+
+### Persistence tests
+
+The Owner & Pet Manager persistence test drops and recreates tables. It must never target the `owner_pet_manager` (or other service) databases.
+
+```bash
+docker compose up -d
+pnpm test:opm:persistence
+```
+
+That sets `OPM_TEST_DATABASE_URL` to `postgresql://my_pet_care:my_pet_care@localhost:5432/owner_pet_manager_test`. The test creates `owner_pet_manager_test` if the volume was initialized before that database existed. It refuses to run against protected database names (`owner_pet_manager`, and the other service databases).
+
+To apply the Owner & Pet Manager schema to the **dev** database (for a live `pnpm dev` stack), use the SQL file — do not use the persistence test for that:
+
+```bash
+psql postgresql://my_pet_care:my_pet_care@localhost:5432/owner_pet_manager \
+  -f services/owner-pet-manager/sql/001_owners_pets.sql
+```
 
 ## Before you change a service
 
