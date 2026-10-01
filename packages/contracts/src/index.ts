@@ -106,3 +106,24 @@ export const communityCollaboratorUnavailableProblem = {
   status: 503,
   detail: "The Community collaborator could not be reached.",
 } as const satisfies ProblemDetails;
+
+export const credentialsRejectedProblem = {
+  type: "urn:my-pet-care:credentials-rejected",
+  title: "Unauthorized",
+  status: 401,
+  detail: "The credentials were not accepted.",
+} as const satisfies ProblemDetails;
+
+export const tryAgainLaterProblem = {
+  type: "urn:my-pet-care:try-again-later",
+  title: "Too Many Requests",
+  status: 429,
+  detail: "Try again later.",
+} as const satisfies ProblemDetails;
+
+export const mailDeliveryFailedProblem = {
+  type: "urn:my-pet-care:mail-delivery-failed",
+  title: "Service Unavailable",
+  status: 503,
+  detail: "The message could not be sent.",
+} as const satisfies ProblemDetails;
