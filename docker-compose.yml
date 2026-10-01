@@ -1,3 +1,24 @@
+x-node: &node
+  image: my-pet-care:local
+  build:
+    context: .
+    dockerfile: Dockerfile
+  environment: &node-env
+    LISTEN_HOST: 0.0.0.0
+    MPC_SECRETS_FILE: /var/lib/mpc/secrets.env
+  healthcheck: &healthcheck
+    test:
+      [
+        "CMD",
+        "node",
+        "-e",
+        "fetch('http://127.0.0.1:' + process.env.PORT + '/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+      ]
+    interval: 2s
+    timeout: 5s
+    retries: 30
+    start_period: 20s
+
 services:
   postgres:
     image: postgres:18
@@ -16,8 +37,123 @@ services:
       timeout: 5s
       retries: 20
 
-# Community collaborator stub is a local Node process (port 3005), not containerized:
-#   pnpm --filter @my-pet-care/community-collaborator-stub dev
+  bootstrap:
+    <<: *node
+    command: ["bootstrap"]
+    environment:
+      MPC_DIR: /var/lib/mpc
+      PGHOST: postgres
+      PGUSER: my_pet_care
+      PGPASSWORD: my_pet_care
+    volumes:
+      - ./.docker:/var/lib/mpc
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+    restart: "no"
+
+  authentication-service:
+    <<: *node
+    command: ["node", "services/authentication-service/dist/main.js"]
+    environment:
+      <<: *node-env
+      PORT: "3004"
+      DATABASE_URL: postgresql://my_pet_care:my_pet_care@postgres:5432/authentication_service
+      JWT_PRIVATE_KEY_PATH: /var/lib/mpc/authentication-private.pem
+      JWT_PUBLIC_KEY_PATH: /var/lib/mpc/authentication-public.pem
+      RESET_LINK_TEMPLATE: "https://example.test/reset?token={token}"
+      OWNER_PET_MANAGER_BASE_URL: http://owner-pet-manager:3001
+      MAIL_SINK: file:/var/lib/mpc/reset-links.txt
+    ports:
+      - "127.0.0.1:3004:3004"
+    volumes:
+      - ./.docker:/var/lib/mpc
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+
+  owner-pet-manager:
+    <<: *node
+    command: ["node", "services/owner-pet-manager/dist/main.js"]
+    environment:
+      <<: *node-env
+      PORT: "3001"
+      DATABASE_URL: postgresql://my_pet_care:my_pet_care@postgres:5432/owner_pet_manager
+      AUTH_BASE_URL: http://authentication-service:3004
+      COMMUNITY_BASE_URL: http://community-collaborator-stub:3005
+      JWT_PUBLIC_KEY_PATH: /var/lib/mpc/authentication-public.pem
+    ports:
+      - "127.0.0.1:3001:3001"
+    volumes:
+      - ./.docker:/var/lib/mpc:ro
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+      authentication-service:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  pet-health-service:
+    <<: *node
+    command: ["node", "services/pet-health-service/dist/main.js"]
+    environment:
+      <<: *node-env
+      PORT: "3002"
+      DATABASE_URL: postgresql://my_pet_care:my_pet_care@postgres:5432/pet_health_service
+      AUTH_BASE_URL: http://authentication-service:3004
+    ports:
+      - "127.0.0.1:3002:3002"
+    volumes:
+      - ./.docker:/var/lib/mpc:ro
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+      authentication-service:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  activity-manager:
+    <<: *node
+    command: ["node", "services/activity-manager/dist/main.js"]
+    environment:
+      <<: *node-env
+      PORT: "3003"
+      DATABASE_URL: postgresql://my_pet_care:my_pet_care@postgres:5432/activity_manager
+      AUTH_BASE_URL: http://authentication-service:3004
+    ports:
+      - "127.0.0.1:3003:3003"
+    volumes:
+      - ./.docker:/var/lib/mpc:ro
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+      authentication-service:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  community-collaborator-stub:
+    <<: *node
+    command: ["node", "services/community-collaborator-stub/dist/main.js"]
+    environment:
+      <<: *node-env
+      PORT: "3005"
+      AUTH_BASE_URL: http://authentication-service:3004
+    ports:
+      - "127.0.0.1:3005:3005"
+    volumes:
+      - ./.docker:/var/lib/mpc:ro
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+      authentication-service:
+        condition: service_healthy
 
 volumes:
   postgres-data:

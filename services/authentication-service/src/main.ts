@@ -44,6 +44,13 @@ function readPort(value: string | undefined, fallback: number): number | undefin
   return port;
 }
 
+function readListenHost(value: string | undefined): string {
+  if (value === undefined || value.trim().length === 0) {
+    return "127.0.0.1";
+  }
+  return value.trim();
+}
+
 function readActiveFlag(value: string | undefined): boolean | undefined {
   if (value === undefined || value.length === 0 || value === "true") {
     return true;
@@ -249,7 +256,7 @@ try {
       reject(err);
     };
     app.server.once("error", fail);
-    app.server.listen({ host: "127.0.0.1", port }, () => {
+    app.server.listen({ host: readListenHost(process.env.LISTEN_HOST), port }, () => {
       app.server.off("error", fail);
       resolve();
     });

@@ -27,7 +27,9 @@ pnpm workspace packages are `packages/*` and `services/*` ([pnpm-workspace.yaml]
 - pnpm 12.6.0 (`corepack enable`)
 - Docker
 
-`docker compose up -d` starts PostgreSQL 18. `pnpm dev` listens on `127.0.0.1`:
+`docker compose up --build` starts PostgreSQL 18 and all five processes. Published ports bind the host loopback only. Inside the Compose network the processes listen on `0.0.0.0` (`LISTEN_HOST`) and call each other by service name.
+
+`pnpm dev` is the edit loop. It listens on `127.0.0.1` and does not use the Compose app containers:
 
 | Process | Port |
 | --- | --- |
@@ -64,12 +66,14 @@ Compose runs one Postgres server. The image creates `owner_pet_manager`. [docker
 
 Owner & Pet Manager, Pet Health Service, Activity Manager, and Authentication Service each have `src/schema.ts` and `drizzle.config.ts`. [ADR-0006](adr/0006-drizzle-orm.md) says schema changes ship as drizzle-kit migrations owned by that service. This repository has no migration directory and no migrate script. Startup checks that Postgres accepts a connection. It does not apply `src/schema.ts`.
 
+`docker compose up` applies Owner & Pet Manager’s `services/owner-pet-manager/sql/001_owners_pets.sql` and creates the Authentication Service tables in `docker/postgres/authentication-service.sql` when they are missing. Pet Health Service and Activity Manager have no tables to apply. A second `up` leaves existing rows in place.
+
 ### Persistence tests
 
 The Owner & Pet Manager persistence test drops and recreates tables. It must never target the `owner_pet_manager` (or other service) databases.
 
 ```bash
-docker compose up -d
+docker compose up -d postgres
 pnpm test:opm:persistence
 ```
 
@@ -108,7 +112,46 @@ How to open a project and choose an environment is in [Live local run](#live-loc
 
 ## Live local run
 
-Do this in one shell. No service loads a `.env` file. Keep the key pair outside the repository. `.gitignore` ignores `.env` files and does not ignore PEM files.
+### Compose
+
+From the repository root:
+
+```bash
+docker compose up --build
+```
+
+That builds one image, starts Postgres, and runs a one-shot `bootstrap` container before the five processes. Bootstrap creates any missing service database, applies the two schemas above, and writes `.docker/` when those files are absent:
+
+| File | Contents |
+| --- | --- |
+| `.docker/authentication-private.pem` | Ed25519 private key |
+| `.docker/authentication-public.pem` | Ed25519 public key |
+| `.docker/secrets.env` | `PLATFORM_SERVICE_SECRET` and `PLATFORM_SETUP_SECRET` |
+| `.docker/reset-links.txt` | Password-reset links (`MAIL_SINK`) |
+
+`.docker/` is gitignored. A later `docker compose up` reuses it. Do not run `pnpm dev` against the same ports at the same time.
+
+`GET /health` returns `{ "status": "ok" }` on `http://127.0.0.1:3001` through `http://127.0.0.1:3005`.
+
+Create an Owner on Owner & Pet Manager, then sign in on Authentication Service. Password rules are at least 8 characters and not on the common-password denylist.
+
+```bash
+curl -sS -X POST http://127.0.0.1:3001/owners \
+  -H 'content-type: application/json' \
+  -d '{"username":"ada","email":"ada@example.com","password":"correct-horse"}'
+
+curl -sS -X POST http://127.0.0.1:3004/auth/login \
+  -H 'content-type: application/json' \
+  -d '{"identifier":"ada","password":"correct-horse"}'
+```
+
+Use the access token as a Bearer token on authenticated routes. A platform client-credentials call uses `serviceId` plus `PLATFORM_SERVICE_SECRET` from `.docker/secrets.env` against `POST http://127.0.0.1:3004/oauth/token`. Pet Health Service and Activity Manager have no tables yet, so routes that store those records have nowhere to write.
+
+Stop the stack with `docker compose down`. That keeps the Postgres volume and `.docker/`.
+
+### Edit loop (`pnpm dev`)
+
+Do this in one shell when you want the TypeScript watch processes instead of the image. No service loads a `.env` file. Keep the key pair outside the repository. `.gitignore` ignores `.env` files and does not ignore PEM files.
 
 Create an Ed25519 key pair. Authentication Service reads the private PEM to sign access tokens. Owner & Pet Manager and the other services read only the public PEM.
 
@@ -136,10 +179,10 @@ export MAIL_SINK="file:$HOME/.my-pet-care/reset-links.txt"
 
 Authentication Service signs Owner and platform access tokens, ensures its own platform client before it listens, and writes each reset link as one line under `MAIL_SINK`. Owner & Pet Manager, Pet Health Service, Activity Manager, and the Community stub call ensure with the same setup secret before they listen. The Community stub registers service id `community`. A client-credentials grant succeeds after that row exists. Leave `MAIL_SINK` unset only when you want reset requests to fail delivery.
 
-Start Postgres, install dependencies, and start the processes. Ports are listed in [Local stack](#local-stack).
+Start only Postgres, install dependencies, and start the watch processes. `docker compose up -d` without a service name also starts the app containers and takes the same ports. Ports are listed in [Local stack](#local-stack).
 
 ```bash
-docker compose up -d
+docker compose up -d postgres
 pnpm install
 pnpm dev
 ```

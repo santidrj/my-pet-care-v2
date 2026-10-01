@@ -32,6 +32,13 @@ function readPort(value: string | undefined, fallback: number): number | undefin
   return port;
 }
 
+function readListenHost(value: string | undefined): string {
+  if (value === undefined || value.trim().length === 0) {
+    return "127.0.0.1";
+  }
+  return value.trim();
+}
+
 const requestedLevel = process.env.LOG_LEVEL;
 const logLevel = requestedLevel === undefined ? "info" : requestedLevel;
 const logger = createLogger(LOG_LEVELS.has(logLevel) ? logLevel : "info");
@@ -81,7 +88,7 @@ try {
       reject(err);
     };
     app.server.once("error", fail);
-    app.server.listen({ host: "127.0.0.1", port }, () => {
+    app.server.listen({ host: readListenHost(process.env.LISTEN_HOST), port }, () => {
       app.server.off("error", fail);
       resolve();
     });
