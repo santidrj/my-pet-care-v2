@@ -1,0 +1,33 @@
+$kind: http-request
+description: |
+  PHS-FR-016. Activity Manager only. Any other caller, including an Owner,
+  is `403`. Succeeds when the Pet is deactivated. No metric for this
+  Activity is `404`.
+url: '{{baseUrl}}/activity-duration-metrics/:activityId'
+method: DELETE
+headers:
+  Accept: application/json
+pathVariables:
+  - key: activityId
+    value: '{{activityId}}'
+    disabled: false
+    description: (Required) Activity id from Activity Manager. Also the id of its activity-duration Health
+      metric.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{platformAccessToken}}'
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 204', function () {
+        pm.response.to.have.status(204);
+      });
+examples: ./.resources/Hard-delete activity-duration Health metric.resources/examples
+order: 4000

@@ -1,0 +1,27 @@
+$kind: http-request
+description: |
+  PHS-FR-016. Owner read. The metric id is its Activity's id (ADR-0024).
+  Allowed when the Pet is deactivated.
+url: '{{baseUrl}}/activity-duration-metrics/:activityId'
+method: GET
+headers:
+  Accept: application/json
+pathVariables:
+  - key: activityId
+    value: '{{activityId}}'
+    disabled: false
+    description: (Required) Activity id from Activity Manager. Also the id of its activity-duration Health
+      metric.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
+examples: ./.resources/Get activity-duration Health metric.resources/examples
+order: 3000

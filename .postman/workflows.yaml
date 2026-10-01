@@ -12,3 +12,7 @@ workflows:
       collection: ../postman/collections/Activity Manager
       options:
         folderStrategy: Tags
+    - spec: ../postman/specs/pet-health-service/openapi.yaml
+      collection: ../postman/collections/Pet Health Service
+      options:
+        folderStrategy: Tags

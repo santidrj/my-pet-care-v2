@@ -37,7 +37,7 @@ The latest health-oriented values for a Pet: latest weight and recommended daily
 _Avoid_: Health data, health record, pet profile
 
 **Recommended daily kilocalories**:
-The daily energy target for a Pet on its Health profile, either computed from weight and species or set by an Owner override until recalculated. It is not Calories burned or the calories-consumed Health metric.
+The daily energy target for a Pet on its Health profile. Without an Owner override it is always derived from the current latest weight and species, and is empty when there is no latest weight. An Owner override replaces it until the Owner clears the override. It is not Calories burned or the calories-consumed Health metric.
 _Avoid_: Daily kcal, RER target, calorie budget
 
 **Health metric**:
@@ -57,7 +57,7 @@ A completed hygiene event for a Pet (for example a bath), registered at a point 
 _Avoid_: Bath, grooming session, hygiene event
 
 **Wash schedule**:
-A recurring interval set by the Owner, anchored on a start date, that determines when a Pet’s next Wash is due. The start date is never in the past when it is set or replaced. Next due is the start date until a Wash is registered on or after it; after that, it is the latest such Wash plus the interval. Washes before the start date do not count, so replacing the start date restarts the schedule. When no schedule exists, the Pet is not due for a Wash by schedule.
+A start date and a recurring interval in whole days, set by the Owner, that determine when a Pet’s next Wash is due. Next due is a calendar date: the date of the latest Wash on or after the start date plus the interval, or the start date itself while no such Wash exists. Washes before the start date do not move it. When no schedule exists, including after the Owner deletes it, the Pet is not due for a Wash by schedule.
 _Avoid_: Wash appointment, hygiene plan, grooming schedule
 
 **Medical record**:
@@ -69,7 +69,7 @@ A recorded veterinary encounter for a Pet, including when it happened, the clini
 _Avoid_: Appointment, consultation, clinic visit
 
 **Medication**:
-A treatment course for a Pet (drug name, dosage instructions, start and optional end), optionally linked to a Vet visit. Not an individual dose administration.
+A treatment course for a Pet (drug name, dosage instructions, start date and optional end date), optionally linked to a Vet visit. Hard-deleting that Vet visit leaves the Medication in place without the link. Not an individual dose administration.
 _Avoid_: Prescription, drug, treatment, dose log
 
 ### Activity

@@ -1,0 +1,28 @@
+$kind: http-request
+description: |
+  PHS-FR-012. `scheduled` with `nextDue` as a calendar date: the start date
+  while no Wash is on or after it, otherwise the UTC date of the latest
+  such Wash plus `intervalDays`. `not-scheduled` when no Wash schedule
+  exists. Allowed when the Pet is deactivated.
+url: '{{baseUrl}}/pets/:petId/wash-schedule/next-due'
+method: GET
+headers:
+  Accept: application/json
+pathVariables:
+  - key: petId
+    value: '{{petId}}'
+    disabled: false
+    description: (Required) Pet id from Owner & Pet Manager.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
+examples: ./.resources/Get next appointed Wash.resources/examples
+order: 4000

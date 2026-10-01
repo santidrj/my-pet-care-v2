@@ -1,0 +1,42 @@
+$kind: http-example
+request:
+  url: '{{baseUrl}}/activity-duration-metrics/:activityId'
+  method: PUT
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: 'Added as a part of security scheme: bearer'
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: activityId
+      value: <uuid>
+      disabled: false
+      description: (Required) Activity id from Activity Manager. Also the id of its activity-duration
+        Health metric.
+    - key: baseUrl
+      value: '{{baseUrl}}'
+      description: ''
+  body:
+    type: json
+    content: |-
+      {
+        "petId": "44444444-4444-4444-8444-444444444444",
+        "durationMinutes": 30,
+        "timestamp": "2026-09-28T08:30:00.000Z"
+      }
+response:
+  statusCode: 201
+  statusText: Created
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "id": "33333333-3333-4333-8333-333333333333",
+        "petId": "44444444-4444-4444-8444-444444444444",
+        "durationMinutes": 30,
+        "timestamp": "2026-09-28T08:30:00.000Z"
+      }
+order: 2000

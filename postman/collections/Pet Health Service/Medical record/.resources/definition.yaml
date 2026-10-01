@@ -1,0 +1,3 @@
+$kind: collection
+description: Read-only view of Vet visits and Medications
+order: 9000

@@ -1,0 +1,41 @@
+$kind: http-example
+name: The request is invalid.
+request:
+  url: '{{baseUrl}}/pets/:petId/wash-schedule'
+  method: PUT
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: 'Added as a part of security scheme: bearer'
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: petId
+      value: <uuid>
+      disabled: false
+      description: (Required) Pet id from Owner & Pet Manager.
+    - key: baseUrl
+      value: '{{baseUrl}}'
+      description: ''
+  body:
+    type: json
+    content: |-
+      {
+        "startDate": "2026-10-01",
+        "intervalDays": 14
+      }
+response:
+  statusCode: 400
+  statusText: Bad Request
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "type": "urn:my-pet-care:validation-failed",
+        "title": "Bad Request",
+        "status": 400,
+        "detail": "The request is invalid."
+      }
+order: 2000

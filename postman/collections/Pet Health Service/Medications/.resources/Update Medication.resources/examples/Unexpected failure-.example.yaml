@@ -1,0 +1,40 @@
+$kind: http-example
+name: Unexpected failure.
+request:
+  url: '{{baseUrl}}/medications/:medicationId'
+  method: PATCH
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: 'Added as a part of security scheme: bearer'
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: medicationId
+      value: <uuid>
+      disabled: false
+      description: (Required) Medication id returned on create.
+    - key: baseUrl
+      value: '{{baseUrl}}'
+      description: ''
+  body:
+    type: json
+    content: |-
+      {
+        "endDate": "2026-09-29"
+      }
+response:
+  statusCode: 500
+  statusText: Internal Server Error
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "type": "urn:my-pet-care:internal-error",
+        "title": "Internal Server Error",
+        "status": 500,
+        "detail": "The service failed to handle this request."
+      }
+order: 8000

@@ -1,0 +1,34 @@
+$kind: http-request
+description: |
+  PHS-FR-008. Partial update. The calories-consumed Health metric takes the
+  Meal's kilocalories and timestamp.
+url: '{{baseUrl}}/meals/:mealId'
+method: PATCH
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: mealId
+    value: '{{mealId}}'
+    disabled: false
+    description: (Required) Meal id returned on create. Also the id of its calories-consumed Health metric.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+body:
+  type: json
+  content: |-
+    {
+      "kilocalories": 280,
+      "notes": "Left a few pieces"
+    }
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
+examples: ./.resources/Update Meal.resources/examples
+order: 4000

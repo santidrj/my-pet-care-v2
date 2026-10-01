@@ -1,0 +1,49 @@
+$kind: http-request
+description: PHS-FR-014. `visitedAt`, `clinicName`, and `reason` are required.
+url: '{{baseUrl}}/pets/:petId/vet-visits'
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: petId
+    value: '{{petId}}'
+    disabled: false
+    description: (Required) Pet id from Owner & Pet Manager.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+body:
+  type: json
+  content: |-
+    {
+      "visitedAt": "2026-09-15T10:00:00.000Z",
+      "clinicName": "Clínica Veterinària Gràcia",
+      "reason": "Annual check-up and vaccination"
+    }
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      function persist(key, value) {
+        if (value === undefined || value === null || value === '') {
+          return;
+        }
+        pm.collectionVariables.set(key, String(value));
+        pm.environment.set(key, String(value));
+      }
+
+      pm.test('HTTP status is 201', function () {
+        pm.response.to.have.status(201);
+      });
+      if (pm.response.code !== 201) {
+        return;
+      }
+      pm.test('response includes an id', function () {
+        const body = pm.response.json();
+        pm.expect(body.id).to.be.a('string').and.not.empty;
+        persist('vetVisitId', body.id);
+      });
+examples: ./.resources/Create Vet visit.resources/examples
+order: 1000

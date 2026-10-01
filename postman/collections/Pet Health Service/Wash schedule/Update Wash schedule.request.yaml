@@ -1,0 +1,35 @@
+$kind: http-request
+description: |
+  PHS-FR-010. Partial update. A sent `startDate` must be on or after the
+  current UTC date and becomes the new anchor. Washes before it no longer
+  move next due. An `intervalDays`-only change does not re-check the
+  stored start date. No schedule is `404`.
+url: '{{baseUrl}}/pets/:petId/wash-schedule'
+method: PATCH
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: petId
+    value: '{{petId}}'
+    disabled: false
+    description: (Required) Pet id from Owner & Pet Manager.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+body:
+  type: json
+  content: |-
+    {
+      "intervalDays": 21
+    }
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
+examples: ./.resources/Update Wash schedule.resources/examples
+order: 3000

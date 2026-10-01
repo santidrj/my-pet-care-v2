@@ -1,0 +1,24 @@
+$kind: http-request
+description: PHS-FR-008. Allowed when the Pet is deactivated.
+url: '{{baseUrl}}/meals/:mealId'
+method: GET
+headers:
+  Accept: application/json
+pathVariables:
+  - key: mealId
+    value: '{{mealId}}'
+    disabled: false
+    description: (Required) Meal id returned on create. Also the id of its calories-consumed Health metric.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
+examples: ./.resources/Get Meal.resources/examples
+order: 3000

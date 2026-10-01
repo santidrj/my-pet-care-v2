@@ -1,0 +1,46 @@
+$kind: http-example
+name: |
+  The kind of caller can never perform this operation: a platform service
+  on an Owner route, a platform service other than Activity Manager, or an
+  Owner on an Activity Manager route.
+request:
+  url: '{{baseUrl}}/activity-duration-metrics/:activityId'
+  method: PUT
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: 'Added as a part of security scheme: bearer'
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: activityId
+      value: <uuid>
+      disabled: false
+      description: (Required) Activity id from Activity Manager. Also the id of its activity-duration
+        Health metric.
+    - key: baseUrl
+      value: '{{baseUrl}}'
+      description: ''
+  body:
+    type: json
+    content: |-
+      {
+        "petId": "44444444-4444-4444-8444-444444444444",
+        "durationMinutes": 30,
+        "timestamp": "2026-09-28T08:30:00.000Z"
+      }
+response:
+  statusCode: 403
+  statusText: Forbidden
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "type": "urn:my-pet-care:forbidden",
+        "title": "Forbidden",
+        "status": 403,
+        "detail": "You are not allowed to perform this operation."
+      }
+order: 5000

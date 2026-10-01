@@ -1,0 +1,26 @@
+$kind: http-request
+description: |
+  PHS-FR-017. The metric id is its Meal's id (ADR-0024). Allowed when the
+  Pet is deactivated.
+url: '{{baseUrl}}/calories-consumed-metrics/:mealId'
+method: GET
+headers:
+  Accept: application/json
+pathVariables:
+  - key: mealId
+    value: '{{mealId}}'
+    disabled: false
+    description: (Required) Meal id returned on create. Also the id of its calories-consumed Health metric.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
+examples: ./.resources/Get calories-consumed Health metric.resources/examples
+order: 2000

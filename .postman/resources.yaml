@@ -5,11 +5,14 @@ resourceNameMappings:
     - ../postman/specs/owner-pet-manager/openapi.yaml: Owner & Pet Manager
     - ../postman/specs/authentication-service/openapi.yaml: Authentication Service
     - ../postman/specs/activity-manager/openapi.yaml: Activity Manager
+    - ../postman/specs/pet-health-service/openapi.yaml: Pet Health Service
   collections:
     - ../postman/collections/Owner & Pet Manager: Owner & Pet Manager
     - ../postman/collections/Authentication Service: Authentication Service
     - ../postman/collections/Activity Manager: Activity Manager
+    - ../postman/collections/Pet Health Service: Pet Health Service
   environments:
     - ../postman/environments/Owner & Pet Manager Local.environment.yaml: Owner & Pet Manager Local
     - ../postman/environments/Authentication Service Local.environment.yaml: Authentication Service Local
     - ../postman/environments/Activity Manager Local.environment.yaml: Activity Manager Local
+    - ../postman/environments/Pet Health Service Local.environment.yaml: Pet Health Service Local

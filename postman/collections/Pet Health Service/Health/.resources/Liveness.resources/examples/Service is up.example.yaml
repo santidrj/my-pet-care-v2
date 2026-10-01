@@ -1,0 +1,26 @@
+$kind: http-example
+request:
+  url: '{{baseUrl}}/health'
+  method: GET
+  headers:
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: baseUrl
+      value: '{{baseUrl}}'
+      description: ''
+  body:
+    type: text
+    content: ''
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "status": "ok"
+      }
+order: 1000

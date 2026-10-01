@@ -1,0 +1,42 @@
+$kind: http-example
+request:
+  url: '{{baseUrl}}/pets/:petId/vet-visits'
+  method: POST
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: 'Added as a part of security scheme: bearer'
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: petId
+      value: <uuid>
+      disabled: false
+      description: (Required) Pet id from Owner & Pet Manager.
+    - key: baseUrl
+      value: '{{baseUrl}}'
+      description: ''
+  body:
+    type: json
+    content: |-
+      {
+        "visitedAt": "2026-09-15T10:00:00.000Z",
+        "clinicName": "Clínica Veterinària Gràcia",
+        "reason": "Annual check-up and vaccination"
+      }
+response:
+  statusCode: 201
+  statusText: Created
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "id": "88888888-8888-4888-8888-888888888888",
+        "petId": "44444444-4444-4444-8444-444444444444",
+        "visitedAt": "2026-09-15T10:00:00.000Z",
+        "clinicName": "Clínica Veterinària Gràcia",
+        "reason": "Annual check-up and vaccination"
+      }
+order: 1000

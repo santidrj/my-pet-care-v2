@@ -1,0 +1,24 @@
+$kind: http-request
+description: PHS-FR-003. Allowed when the Pet is deactivated.
+url: '{{baseUrl}}/weight-metrics/:metricId'
+method: GET
+headers:
+  Accept: application/json
+pathVariables:
+  - key: metricId
+    value: '{{weightMetricId}}'
+    disabled: false
+    description: (Required) Weight Health metric id returned on record.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
+examples: ./.resources/Get weight Health metric.resources/examples
+order: 3000

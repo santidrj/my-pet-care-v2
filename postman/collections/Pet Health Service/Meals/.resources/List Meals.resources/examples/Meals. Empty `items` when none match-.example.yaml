@@ -1,0 +1,51 @@
+$kind: http-example
+name: Meals. Empty `items` when none match.
+request:
+  url: '{{baseUrl}}/pets/:petId/meals?from=2026-09-28T00:00:00.000Z&to=2026-09-28T23:59:59.999Z'
+  method: GET
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: 'Added as a part of security scheme: bearer'
+    - key: Accept
+      value: application/json
+  queryParams:
+    from: '2026-09-28T00:00:00.000Z'
+    to: '2026-09-28T23:59:59.999Z'
+  pathVariables:
+    - key: petId
+      value: <uuid>
+      disabled: false
+      description: (Required) Pet id from Owner & Pet Manager.
+    - key: baseUrl
+      value: '{{baseUrl}}'
+      description: ''
+  body:
+    type: text
+    content: ''
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "items": [
+          {
+            "id": "66666666-6666-4666-8666-666666666666",
+            "petId": "44444444-4444-4444-8444-444444444444",
+            "foodName": "Chicken and rice kibble",
+            "kilocalories": 320,
+            "timestamp": "2026-09-28T07:30:00.000Z",
+            "brand": "Acme Pet Foods",
+            "labels": [
+              "dry",
+              "breakfast"
+            ],
+            "notes": "Ate everything"
+          }
+        ]
+      }
+order: 1000

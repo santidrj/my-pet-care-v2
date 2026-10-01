@@ -89,7 +89,7 @@ Read that service’s requirements and architecture diagram, then the ADRs in [d
 | Area | Requirements | Architecture |
 | --- | --- | --- |
 | Owner & Pet Manager | [owner-pet-manager.md](requirements/owner-pet-manager.md), [owner-pet-manager-api.md](requirements/owner-pet-manager-api.md) | [owner-pet-manager.mmd](architecture/owner-pet-manager.mmd) |
-| Pet Health Service | [pet-health-service.md](requirements/pet-health-service.md) | [pet-health-service.mmd](architecture/pet-health-service.mmd) |
+| Pet Health Service | [pet-health-service.md](requirements/pet-health-service.md), [pet-health-service-api.md](requirements/pet-health-service-api.md) | [pet-health-service.mmd](architecture/pet-health-service.mmd) |
 | Activity Manager | [activity-manager.md](requirements/activity-manager.md), [activity-manager-api.md](requirements/activity-manager-api.md) | [activity-manager.mmd](architecture/activity-manager.mmd) |
 | Authentication Service | [authentication-service.md](requirements/authentication-service.md), [authentication-service-api.md](requirements/authentication-service-api.md) | [authentication-service.mmd](architecture/authentication-service.mmd) |
 | Platform-service authenticator | [platform-service-authenticator.md](requirements/platform-service-authenticator.md), [platform-service-authenticator-api.md](requirements/platform-service-authenticator-api.md) | [platform-service-authenticator.mmd](architecture/platform-service-authenticator.mmd) |
@@ -100,11 +100,11 @@ Postman files in this repository are the contract checks.
 
 | Directory | Contents |
 | --- | --- |
-| [postman/collections/](../postman/collections/) | Owner & Pet Manager, Activity Manager, and Authentication Service collections. |
-| [postman/environments/](../postman/environments/) | Owner & Pet Manager Local, Activity Manager Local, and Authentication Service Local. |
-| [postman/specs/](../postman/specs/) | OpenAPI specs for those three services. |
+| [postman/collections/](../postman/collections/) | Owner & Pet Manager, Pet Health Service, Activity Manager, and Authentication Service collections. |
+| [postman/environments/](../postman/environments/) | Owner & Pet Manager Local, Pet Health Service Local, Activity Manager Local, and Authentication Service Local. |
+| [postman/specs/](../postman/specs/) | OpenAPI specs for those four services. |
 
-Pet Health Service has no collection, environment, or spec here. How to open a project and choose an environment is in [Live local run](#live-local-run).
+How to open a project and choose an environment is in [Live local run](#live-local-run).
 
 ## Live local run
 
@@ -150,6 +150,7 @@ Exercise the local Postman environments. Import or open the local project, choos
 
 - Owner & Pet Manager Local — [Contract artifacts](requirements/owner-pet-manager-api.md#contract-artifacts)
 - Authentication Service Local — [Contract artifacts](requirements/authentication-service-api.md#contract-artifacts)
+- Pet Health Service Local — [Contract artifacts](requirements/pet-health-service-api.md#contract-artifacts)
 - Activity Manager Local — [Contract artifacts](requirements/activity-manager-api.md#contract-artifacts)
 
 A request that reads or writes a table fails until migrations exist. See [Databases](#databases).

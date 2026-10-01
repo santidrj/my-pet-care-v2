@@ -1,0 +1,40 @@
+$kind: http-example
+name: Override set. Body is the Health profile.
+request:
+  url: '{{baseUrl}}/pets/:petId/health-profile/recommended-daily-kilocalories-override'
+  method: PUT
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: 'Added as a part of security scheme: bearer'
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: petId
+      value: <uuid>
+      disabled: false
+      description: (Required) Pet id from Owner & Pet Manager.
+    - key: baseUrl
+      value: '{{baseUrl}}'
+      description: ''
+  body:
+    type: json
+    content: |-
+      {
+        "value": 650
+      }
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "petId": "44444444-4444-4444-8444-444444444444",
+        "latestWeightKg": 12.4,
+        "recommendedDailyKilocalories": 650,
+        "recommendedDailyKilocaloriesOverridden": true
+      }
+order: 1000

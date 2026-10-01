@@ -85,7 +85,7 @@ This version covers **functional requirements** and an initial set of **non-func
 ## Assumptions
 
 - Inbound Bearer JWT verification and outbound platform credentials use the shared **platform-service authenticator** (ADR-0016). Owner calls carry `ownerId` with `aud` = `my-pet-care`; outbound calls to Owner & Pet Manager, Pet Health Service, and the Community collaborator present this service’s platform JWT (`service` = `activity-manager`, `aud` = `my-pet-care:platform`). External Share link resolution and health/liveness are on the authenticator allowlist.
-- Pet Health Service exposes latest-weight read and activity-duration Health metric create/correct/hard-delete for Activity Manager (platform JWT).
+- Pet Health Service exposes latest-weight read and activity-duration Health metric create/correct/hard-delete for Activity Manager (platform JWT). Routes are in [`pet-health-service-api.md`](./pet-health-service-api.md): `GET /pets/{petId}/health-profile`, and `PUT` and `DELETE /activity-duration-metrics/{activityId}` keyed by Activity id (ADR-0024).
 - Until the Community collaborator can accept a Forum or Group activity share reference, Share create to those audiences fails closed.
 - Clients perform OS-level external shares using the link/summary this service returns.
 - Platform default Activity types are seeded by deployment/ops, not by Owners.

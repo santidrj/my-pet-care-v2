@@ -1,0 +1,48 @@
+$kind: http-example
+request:
+  url: '{{baseUrl}}/meals/:mealId'
+  method: PATCH
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: 'Added as a part of security scheme: bearer'
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: mealId
+      value: <uuid>
+      disabled: false
+      description: (Required) Meal id returned on create. Also the id of its calories-consumed Health
+        metric.
+    - key: baseUrl
+      value: '{{baseUrl}}'
+      description: ''
+  body:
+    type: json
+    content: |-
+      {
+        "kilocalories": 280,
+        "notes": "Left a few pieces"
+      }
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "id": "66666666-6666-4666-8666-666666666666",
+        "petId": "44444444-4444-4444-8444-444444444444",
+        "foodName": "Chicken and rice kibble",
+        "kilocalories": 280,
+        "timestamp": "2026-09-28T07:30:00.000Z",
+        "brand": "Acme Pet Foods",
+        "labels": [
+          "dry",
+          "breakfast"
+        ],
+        "notes": "Left a few pieces"
+      }
+order: 1000

@@ -1,0 +1,26 @@
+$kind: http-request
+description: |
+  PHS-FR-010. Hard delete. Washes remain. Next due is `not-scheduled` until
+  a new schedule is set. No schedule is `404`.
+url: '{{baseUrl}}/pets/:petId/wash-schedule'
+method: DELETE
+headers:
+  Accept: application/json
+pathVariables:
+  - key: petId
+    value: '{{petId}}'
+    disabled: false
+    description: (Required) Pet id from Owner & Pet Manager.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 204', function () {
+        pm.response.to.have.status(204);
+      });
+examples: ./.resources/Hard-delete Wash schedule.resources/examples
+order: 5000

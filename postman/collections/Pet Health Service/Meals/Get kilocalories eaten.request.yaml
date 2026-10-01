@@ -1,0 +1,37 @@
+$kind: http-request
+description: |
+  PHS-FR-009. Sum of Meal kilocalories with a timestamp in `from`–`to`,
+  both ends inclusive. Both are required. There is no "today" mode. An
+  empty range is `0`. Allowed when the Pet is deactivated.
+url: '{{baseUrl}}/pets/:petId/kilocalories-eaten'
+method: GET
+headers:
+  Accept: application/json
+queryParams:
+  - key: from
+    value: '{{from}}'
+    disabled: false
+    description: (Required) Inclusive start of the Meal timestamp range.
+  - key: to
+    value: '{{to}}'
+    disabled: false
+    description: (Required) Inclusive end of the Meal timestamp range. Must be greater than or equal to
+      `from`.
+pathVariables:
+  - key: petId
+    value: '{{petId}}'
+    disabled: false
+    description: (Required) Pet id from Owner & Pet Manager.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
+examples: ./.resources/Get kilocalories eaten.resources/examples
+order: 5000

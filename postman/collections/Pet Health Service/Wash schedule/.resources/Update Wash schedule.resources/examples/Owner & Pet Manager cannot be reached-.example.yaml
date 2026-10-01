@@ -1,0 +1,40 @@
+$kind: http-example
+name: Owner & Pet Manager cannot be reached.
+request:
+  url: '{{baseUrl}}/pets/:petId/wash-schedule'
+  method: PATCH
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: 'Added as a part of security scheme: bearer'
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: petId
+      value: <uuid>
+      disabled: false
+      description: (Required) Pet id from Owner & Pet Manager.
+    - key: baseUrl
+      value: '{{baseUrl}}'
+      description: ''
+  body:
+    type: json
+    content: |-
+      {
+        "intervalDays": 21
+      }
+response:
+  statusCode: 503
+  statusText: Service Unavailable
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "type": "urn:my-pet-care:owner-pet-manager-unavailable",
+        "title": "Service Unavailable",
+        "status": 503,
+        "detail": "Owner & Pet Manager could not be reached."
+      }
+order: 7000

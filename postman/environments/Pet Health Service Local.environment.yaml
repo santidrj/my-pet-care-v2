@@ -1,0 +1,63 @@
+name: Pet Health Service Local
+values:
+  - key: baseUrl
+    value: http://localhost:3002
+    enabled: true
+    type: default
+    description: Pet Health Service base URL (local default port 3002)
+  - key: ownerAccessToken
+    value: ''
+    enabled: true
+    type: secret
+    description: Owner Bearer JWT. Leave empty until Authentication Service issues a token.
+  - key: platformAccessToken
+    value: ''
+    enabled: true
+    type: secret
+    description: Activity Manager platform JWT (`service` `activity-manager`) for the activity-duration
+      sync routes.
+  - key: petId
+    value: ''
+    enabled: true
+    type: default
+    description: Pet id from Owner & Pet Manager
+  - key: weightMetricId
+    value: ''
+    enabled: true
+    type: default
+    description: Weight Health metric id returned on record
+  - key: mealId
+    value: ''
+    enabled: true
+    type: default
+    description: Meal id returned on create. Also its calories-consumed Health metric id.
+  - key: activityId
+    value: ''
+    enabled: true
+    type: default
+    description: Activity id from Activity Manager. Also its activity-duration Health metric id.
+  - key: washId
+    value: ''
+    enabled: true
+    type: default
+    description: Wash id returned on register
+  - key: vetVisitId
+    value: ''
+    enabled: true
+    type: default
+    description: Vet visit id returned on create
+  - key: medicationId
+    value: ''
+    enabled: true
+    type: default
+    description: Medication id returned on create
+  - key: from
+    value: ''
+    enabled: true
+    type: default
+    description: Inclusive start of a timestamp range
+  - key: to
+    value: ''
+    enabled: true
+    type: default
+    description: Inclusive end of a timestamp range

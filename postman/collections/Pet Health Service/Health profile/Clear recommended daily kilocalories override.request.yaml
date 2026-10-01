@@ -1,0 +1,29 @@
+$kind: http-request
+description: |
+  PHS-FR-005 and PHS-FR-006. Removes the override and derives the value
+  from the current latest weight and species. The value is `null` when
+  latest weight is empty. Clearing when no override is in effect succeeds
+  unchanged. An unexpected species from Owner & Pet Manager is `500`.
+  Response is the Health profile.
+url: '{{baseUrl}}/pets/:petId/health-profile/recommended-daily-kilocalories-override'
+method: DELETE
+headers:
+  Accept: application/json
+pathVariables:
+  - key: petId
+    value: '{{petId}}'
+    disabled: false
+    description: (Required) Pet id from Owner & Pet Manager.
+  - key: baseUrl
+    value: '{{baseUrl}}'
+    description: ''
+settings: {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('HTTP status is 200', function () {
+        pm.response.to.have.status(200);
+      });
+examples: ./.resources/Clear recommended daily kilocalories override.resources/examples
+order: 3000

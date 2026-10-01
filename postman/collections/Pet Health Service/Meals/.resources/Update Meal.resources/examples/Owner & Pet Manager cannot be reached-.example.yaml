@@ -1,0 +1,42 @@
+$kind: http-example
+name: Owner & Pet Manager cannot be reached.
+request:
+  url: '{{baseUrl}}/meals/:mealId'
+  method: PATCH
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: 'Added as a part of security scheme: bearer'
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: mealId
+      value: <uuid>
+      disabled: false
+      description: (Required) Meal id returned on create. Also the id of its calories-consumed Health
+        metric.
+    - key: baseUrl
+      value: '{{baseUrl}}'
+      description: ''
+  body:
+    type: json
+    content: |-
+      {
+        "kilocalories": 280,
+        "notes": "Left a few pieces"
+      }
+response:
+  statusCode: 503
+  statusText: Service Unavailable
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "type": "urn:my-pet-care:owner-pet-manager-unavailable",
+        "title": "Service Unavailable",
+        "status": 503,
+        "detail": "Owner & Pet Manager could not be reached."
+      }
+order: 7000

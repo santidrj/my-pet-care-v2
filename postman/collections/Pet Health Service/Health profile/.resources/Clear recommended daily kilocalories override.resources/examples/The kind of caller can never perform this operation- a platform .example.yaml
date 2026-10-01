@@ -1,0 +1,40 @@
+$kind: http-example
+name: |
+  The kind of caller can never perform this operation: a platform service
+  on an Owner route, a platform service other than Activity Manager, or an
+  Owner on an Activity Manager route.
+request:
+  url: '{{baseUrl}}/pets/:petId/health-profile/recommended-daily-kilocalories-override'
+  method: DELETE
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: 'Added as a part of security scheme: bearer'
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: petId
+      value: <uuid>
+      disabled: false
+      description: (Required) Pet id from Owner & Pet Manager.
+    - key: baseUrl
+      value: '{{baseUrl}}'
+      description: ''
+  body:
+    type: text
+    content: ''
+response:
+  statusCode: 403
+  statusText: Forbidden
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "type": "urn:my-pet-care:forbidden",
+        "title": "Forbidden",
+        "status": 403,
+        "detail": "You are not allowed to perform this operation."
+      }
+order: 3000
