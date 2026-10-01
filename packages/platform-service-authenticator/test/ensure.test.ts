@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-  ensurePlatformClient,
+  publishPlatformClient,
   platformClientStartup,
   PlatformClientEnsureError,
 } from "../src/ensure.ts";
@@ -23,10 +23,10 @@ describe("platform client startup env", () => {
   });
 });
 
-describe("ensure platform client", () => {
+describe("publish platform client", () => {
   it("returns when Authentication Service answers 204", async () => {
     let calls = 0;
-    await ensurePlatformClient({
+    await publishPlatformClient({
       ...options,
       fetch: async () => {
         calls += 1;
@@ -44,7 +44,7 @@ describe("ensure platform client", () => {
     let calls = 0;
     await assert.rejects(
       () =>
-        ensurePlatformClient({
+        publishPlatformClient({
           ...options,
           fetch: async () => {
             calls += 1;
@@ -63,7 +63,7 @@ describe("ensure platform client", () => {
 
   it("retries a connection error and then accepts 204", async () => {
     let calls = 0;
-    await ensurePlatformClient({
+    await publishPlatformClient({
       ...options,
       fetch: async () => {
         calls += 1;
@@ -83,7 +83,7 @@ describe("ensure platform client", () => {
     let ticks = 0;
     await assert.rejects(
       () =>
-        ensurePlatformClient({
+        publishPlatformClient({
           ...options,
           fetch: async () => {
             throw new Error("down");

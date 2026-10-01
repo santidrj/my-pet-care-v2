@@ -82,7 +82,7 @@ function delay(ms: number): Promise<void> {
  * Publishes this process's platform client and retries while Authentication
  * Service is not yet accepting the call. A 400 or 401 is final.
  */
-export async function ensurePlatformClient(
+export async function publishPlatformClient(
   options: EnsurePlatformClientOptions,
 ): Promise<void> {
   const fetchImpl = options.fetch ?? globalThis.fetch;

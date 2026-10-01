@@ -1,5 +1,5 @@
 import {
-  ensurePlatformClient,
+  publishPlatformClient,
   platformClientStartup,
 } from "@my-pet-care/platform-service-authenticator";
 import { buildApp } from "./app.js";
@@ -69,7 +69,7 @@ if (!startup.ok) {
 }
 
 try {
-  await ensurePlatformClient(startup.options);
+  await publishPlatformClient(startup.options);
   await app.ready();
   await new Promise<void>((resolve, reject) => {
     const fail = (err: Error): void => {

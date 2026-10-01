@@ -30,7 +30,7 @@ export {
 } from "./plugin.js";
 
 export {
-  ensurePlatformClient,
+  publishPlatformClient,
   platformClientStartup,
   PlatformClientEnsureError,
   type EnsurePlatformClientOptions,

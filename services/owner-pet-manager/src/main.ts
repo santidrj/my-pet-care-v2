@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import {
   createOutboundCredentialProvider,
-  ensurePlatformClient,
+  publishPlatformClient,
 } from "@my-pet-care/platform-service-authenticator";
 import { importSPKI } from "jose";
 import { buildApp } from "./app.js";
@@ -182,7 +182,7 @@ const app = await buildApp({
 });
 
 try {
-  await ensurePlatformClient({
+  await publishPlatformClient({
     baseUrl: authBaseUrl,
     serviceId: "owner-pet-manager",
     secret: platformServiceSecret,
