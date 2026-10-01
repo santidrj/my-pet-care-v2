@@ -5,6 +5,7 @@ export {
   OWNER_AUDIENCE,
   PLATFORM_AUDIENCE,
   CLOCK_TOLERANCE_SECONDS,
+  JWT_ALGORITHM,
   PLATFORM_SERVICE_IDS,
   type Actor,
   type PlatformServiceId,
@@ -28,5 +29,13 @@ export {
   type AuthenticatorPluginOptions,
   type PublicRoutePattern,
 } from "./plugin.js";
+
+export {
+  publishPlatformClient,
+  platformClientStartup,
+  PlatformClientEnsureError,
+  type EnsurePlatformClientOptions,
+  type PlatformClientStartup,
+} from "./ensure.js";
 
 export { unauthorizedProblem } from "@my-pet-care/contracts";

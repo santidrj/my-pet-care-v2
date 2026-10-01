@@ -145,6 +145,36 @@ describe("HTTP routes", () => {
     await app.close();
   });
 
+  it("rejects a Pet species or sex outside the allowed values with 400", async () => {
+    const app = await createTestApp();
+    const created = await app.inject({
+      method: "POST",
+      url: "/owners",
+      payload: {
+        username: "alice",
+        email: "alice@example.com",
+        password: "unique-passphrase-99",
+      },
+    });
+    const owner = created.json();
+    const token = await signOwner(owner.id);
+
+    for (const payload of [
+      { name: "Tweety", species: "bird", sex: "female" },
+      { name: "Rex", species: "dog", sex: "lizard" },
+    ]) {
+      const response = await app.inject({
+        method: "POST",
+        url: `/owners/${owner.id}/pets`,
+        headers: { authorization: `Bearer ${token}` },
+        payload,
+      });
+      assert.equal(response.statusCode, 400);
+      assert.equal(response.json().type, "urn:my-pet-care:validation-failed");
+    }
+    await app.close();
+  });
+
   it("serves health publicly", async () => {
     const app = await createTestApp();
     const response = await app.inject({ method: "GET", url: "/health" });

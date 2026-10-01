@@ -27,4 +27,9 @@ values:
     value: ''
     enabled: true
     type: secret
-    description: Platform client secret for POST /oauth/token
+    description: Platform client secret for POST /oauth/token and PUT /platform-clients/{serviceId}
+  - key: platformSetupSecret
+    value: ''
+    enabled: true
+    type: secret
+    description: Shared provisioning credential for PUT /platform-clients/{serviceId}

@@ -1,0 +1,22 @@
+$kind: http-request
+description: |
+  AUTH-FR-008 / ADR-0023. Setup secret in the JSON body. Upserts this
+  service id's platform client. Missing and wrong setup secrets are the
+  same unauthorized failure.
+url: '{{baseUrl}}/platform-clients/owner-pet-manager'
+method: PUT
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Accept
+    value: application/json
+auth:
+  type: noauth
+body:
+  type: json
+  content: |-
+    {
+      "secret": "{{platformClientSecret}}",
+      "active": true,
+      "setupSecret": "{{platformSetupSecret}}"
+    }

@@ -559,8 +559,8 @@ components:
       minLength: 8
       maxLength: 128
       description: |
-        At least 8 characters; service allows at least 64 (documented max 128).
-        Any character including spaces. Commonly used or known-breached passwords
+        8 to 128 characters, counted as Unicode code points with no normalization
+        (ADR-0018). Any character including spaces. Commonly used or known-breached passwords
         are rejected. No character-class mix required (ADR-0012).
     PhotoRef:
       type: string
@@ -569,6 +569,9 @@ components:
     PetListVisibility:
       type: string
       enum: [private, public]
+    Species:
+      type: string
+      enum: [dog, cat]
     Sex:
       type: string
       enum: [male, female, unknown]
@@ -698,8 +701,7 @@ components:
           type: string
           minLength: 1
         species:
-          type: string
-          minLength: 1
+          $ref: '#/components/schemas/Species'
         sex:
           $ref: '#/components/schemas/Sex'
         breed:
@@ -719,8 +721,7 @@ components:
           type: string
           minLength: 1
         species:
-          type: string
-          minLength: 1
+          $ref: '#/components/schemas/Species'
         sex:
           $ref: '#/components/schemas/Sex'
         breed:
@@ -750,8 +751,7 @@ components:
           type: string
           minLength: 1
         species:
-          type: string
-          minLength: 1
+          $ref: '#/components/schemas/Species'
         sex:
           $ref: '#/components/schemas/Sex'
         breed:
@@ -776,8 +776,7 @@ components:
           type: string
           minLength: 1
         species:
-          type: string
-          minLength: 1
+          $ref: '#/components/schemas/Species'
         sex:
           $ref: '#/components/schemas/Sex'
         breed:

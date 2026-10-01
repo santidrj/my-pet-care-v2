@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@my-pet-care/platform-service-authenticator": "workspace:*",
     "fastify": "^5.12.5",
     "pino": "^10.1.0"
   },

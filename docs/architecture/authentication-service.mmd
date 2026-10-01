@@ -4,12 +4,13 @@ C4Component
     Person(owner, "Owner", "Logs in, refreshes, logs out, resets a password")
     System_Ext(opm, "Owner & Pet Manager", "Password hash, active status, revoke notices")
     System_Ext(mail, "Mail channel", "One reset message to the Owner's email")
-    System_Ext(platform, "Platform services", "Client-credentials for platform JWTs")
+    System_Ext(platform, "Platform services", "Ensure a platform client at startup, then client-credentials")
 
     Container_Boundary(auth, "Authentication Service") {
         Component(login, "Login", "Owner-facing", "Identifier and password, creates an Owner session")
         Component(session, "Refresh and logout", "Owner-facing", "Rotates or ends one Owner session")
         Component(reset, "Password reset", "Owner-facing", "Single-use reset token and new password")
+        Component(ensure, "Ensure platform client", "Service-facing", "Startup upsert of this service's client")
         Component(platformGrant, "Client-credentials", "Service-facing", "Issues platform JWT")
         Component(revocation, "Revocation", "Service-facing", "Ends every Owner session for an Owner")
         ComponentDb(store, "Owner-session store", "System of record", "Sessions, password resets, rate limits, platform clients")
@@ -17,6 +18,7 @@ C4Component
         Rel(login, store, "Reads and writes")
         Rel(session, store, "Reads and writes")
         Rel(reset, store, "Reads and writes")
+        Rel(ensure, store, "Upserts its platform client")
         Rel(platformGrant, store, "Reads platform clients")
         Rel(revocation, store, "Deletes Owner sessions")
     }
@@ -24,6 +26,7 @@ C4Component
     Rel(owner, login, "Signs in (public)")
     Rel(owner, session, "Refreshes or logs out (public)")
     Rel(owner, reset, "Resets password (public)")
+    Rel(platform, ensure, "Ensures its client at startup (setup secret)")
     Rel(platform, platformGrant, "Client credentials (public)")
     Rel(login, opm, "Hash/status + authentication-service JWT", "synchronous")
     Rel(session, opm, "Hash/status + authentication-service JWT", "synchronous")

@@ -1,5 +1,8 @@
 import { readFile } from "node:fs/promises";
-import { createOutboundCredentialProvider } from "@my-pet-care/platform-service-authenticator";
+import {
+  createOutboundCredentialProvider,
+  publishPlatformClient,
+} from "@my-pet-care/platform-service-authenticator";
 import { importSPKI } from "jose";
 import { buildApp } from "./app.js";
 import { createDatabase } from "./database.js";
@@ -94,6 +97,26 @@ if (platformServiceSecret.length === 0) {
   });
   await exitAfterFlush(logger, 1);
 }
+const platformSetupSecret = process.env.PLATFORM_SETUP_SECRET ?? "";
+if (platformSetupSecret.length === 0) {
+  logger.error({
+    service: serviceName,
+    msg: "PLATFORM_SETUP_SECRET is required.",
+  });
+  await exitAfterFlush(logger, 1);
+}
+const platformClientActive = process.env.PLATFORM_CLIENT_ACTIVE;
+if (
+  platformClientActive !== undefined &&
+  platformClientActive !== "true" &&
+  platformClientActive !== "false"
+) {
+  logger.error({
+    service: serviceName,
+    msg: "PLATFORM_CLIENT_ACTIVE is invalid.",
+  });
+  await exitAfterFlush(logger, 1);
+}
 if (authTokenUrl.length === 0) {
   logger.error({ service: serviceName, msg: "AUTH_TOKEN_URL is required." });
   await exitAfterFlush(logger, 1);
@@ -159,6 +182,13 @@ const app = await buildApp({
 });
 
 try {
+  await publishPlatformClient({
+    baseUrl: authBaseUrl,
+    serviceId: "owner-pet-manager",
+    secret: platformServiceSecret,
+    setupSecret: platformSetupSecret,
+    active: platformClientActive !== "false",
+  });
   await app.ready();
   await new Promise<void>((resolve, reject) => {
     const fail = (err: Error): void => {

@@ -48,20 +48,39 @@ From the repository root:
 | `pnpm dev` | Builds `@my-pet-care/contracts` and `@my-pet-care/platform-service-authenticator`, then starts every package under `services/*`. Each service `dev` script sets `DATABASE_URL` and `PORT`. The stub script sets `PORT` only. |
 | `pnpm build` | Builds the two packages, then every service. |
 | `pnpm typecheck` | Typechecks the two packages, builds them, then typechecks every service. |
-| `pnpm test:opm` | Runs `@my-pet-care/owner-pet-manager` tests (`tsx --test test/**/*.test.ts`). |
+| `pnpm test:opm` | Runs `@my-pet-care/owner-pet-manager` tests (`tsx --test test/**/*.test.ts`). Persistence tests skip unless `OPM_TEST_DATABASE_URL` is set. |
+| `pnpm test:opm:persistence` | Runs the Owner & Pet Manager Postgres persistence test against `owner_pet_manager_test` (never the dev database). |
 
 Packages with a `test` script:
 
-- `@my-pet-care/owner-pet-manager` (`pnpm test:opm`)
+- `@my-pet-care/owner-pet-manager` (`pnpm test:opm`, `pnpm test:opm:persistence`)
 - `@my-pet-care/platform-service-authenticator` (`pnpm --filter @my-pet-care/platform-service-authenticator test`)
 
-Pet Health Service, Activity Manager, Authentication Service, and the community-collaborator stub have no `test` script. Owner & Pet Manager’s Postgres persistence tests skip when `DATABASE_URL` is unset. `pnpm test:opm` does not set it.
+Pet Health Service, Activity Manager, Authentication Service, and the community-collaborator stub have no `test` script. Owner & Pet Manager’s Postgres persistence tests skip when `OPM_TEST_DATABASE_URL` is unset. `pnpm test:opm` does not set it. Use `pnpm test:opm:persistence` to run them against the dedicated test database.
 
 ## Databases
 
-Compose runs one Postgres server. The image creates `owner_pet_manager`. [docker/postgres/init/01-create-databases.sql](../docker/postgres/init/01-create-databases.sql) creates `pet_health_service`, `activity_manager`, and `authentication_service`.
+Compose runs one Postgres server. The image creates `owner_pet_manager`. [docker/postgres/init/01-create-databases.sql](../docker/postgres/init/01-create-databases.sql) creates `pet_health_service`, `activity_manager`, `authentication_service`, and `owner_pet_manager_test`.
 
 Owner & Pet Manager, Pet Health Service, Activity Manager, and Authentication Service each have `src/schema.ts` and `drizzle.config.ts`. [ADR-0006](adr/0006-drizzle-orm.md) says schema changes ship as drizzle-kit migrations owned by that service. This repository has no migration directory and no migrate script. Startup checks that Postgres accepts a connection. It does not apply `src/schema.ts`.
+
+### Persistence tests
+
+The Owner & Pet Manager persistence test drops and recreates tables. It must never target the `owner_pet_manager` (or other service) databases.
+
+```bash
+docker compose up -d
+pnpm test:opm:persistence
+```
+
+That sets `OPM_TEST_DATABASE_URL` to `postgresql://my_pet_care:my_pet_care@localhost:5432/owner_pet_manager_test`. The test creates `owner_pet_manager_test` if the volume was initialized before that database existed. It refuses to run against protected database names (`owner_pet_manager`, and the other service databases).
+
+To apply the Owner & Pet Manager schema to the **dev** database (for a live `pnpm dev` stack), use the SQL file — do not use the persistence test for that:
+
+```bash
+psql postgresql://my_pet_care:my_pet_care@localhost:5432/owner_pet_manager \
+  -f services/owner-pet-manager/sql/001_owners_pets.sql
+```
 
 ## Before you change a service
 
@@ -91,7 +110,7 @@ How to open a project and choose an environment is in [Live local run](#live-loc
 
 Do this in one shell. No service loads a `.env` file. Keep the key pair outside the repository. `.gitignore` ignores `.env` files and does not ignore PEM files.
 
-Create an Ed25519 key pair. Point `JWT_PUBLIC_KEY_PATH` at the public PEM. No process in this repository reads the private key.
+Create an Ed25519 key pair. Authentication Service reads the private PEM to sign access tokens. Owner & Pet Manager and the other services read only the public PEM.
 
 ```bash
 mkdir -p "$HOME/.my-pet-care"
@@ -101,16 +120,21 @@ openssl pkey -in "$HOME/.my-pet-care/authentication-private.pem" -pubout -out "$
 
 `JWT_PUBLIC_KEY` may hold the public PEM text instead of a path. These instructions use the path.
 
-Export the variables Owner & Pet Manager exits without. `pnpm dev` already sets `DATABASE_URL` and `PORT`. When `AUTH_BASE_URL` is set, Owner & Pet Manager sets `AUTH_TOKEN_URL` to `{AUTH_BASE_URL}/oauth/token`.
+Export the variables the processes exit without. `pnpm dev` already sets each service `DATABASE_URL` and `PORT`. When `AUTH_BASE_URL` is set, Owner & Pet Manager sets `AUTH_TOKEN_URL` to `{AUTH_BASE_URL}/oauth/token`.
 
 ```bash
+export JWT_PRIVATE_KEY_PATH="$HOME/.my-pet-care/authentication-private.pem"
 export JWT_PUBLIC_KEY_PATH="$HOME/.my-pet-care/authentication-public.pem"
 export PLATFORM_SERVICE_SECRET="$(openssl rand -base64 32)"
+export PLATFORM_SETUP_SECRET="$(openssl rand -base64 32)"
+export RESET_LINK_TEMPLATE='https://example.test/reset?token={token}'
+export OWNER_PET_MANAGER_BASE_URL=http://127.0.0.1:3001
 export AUTH_BASE_URL=http://127.0.0.1:3004
 export COMMUNITY_BASE_URL=http://127.0.0.1:3005
+export MAIL_SINK="file:$HOME/.my-pet-care/reset-links.txt"
 ```
 
-Authentication Service does not sign JWTs and does not store platform-client secret hashes yet. These values let Owner & Pet Manager start. A client-credentials grant does not succeed.
+Authentication Service signs Owner and platform access tokens, ensures its own platform client before it listens, and writes each reset link as one line under `MAIL_SINK`. Owner & Pet Manager, Pet Health Service, Activity Manager, and the Community stub call ensure with the same setup secret before they listen. The Community stub registers service id `community`. A client-credentials grant succeeds after that row exists. Leave `MAIL_SINK` unset only when you want reset requests to fail delivery.
 
 Start Postgres, install dependencies, and start the processes. Ports are listed in [Local stack](#local-stack).
 
