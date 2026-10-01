@@ -5,6 +5,7 @@ export {
   OWNER_AUDIENCE,
   PLATFORM_AUDIENCE,
   CLOCK_TOLERANCE_SECONDS,
+  JWT_ALGORITHM,
   PLATFORM_SERVICE_IDS,
   type Actor,
   type PlatformServiceId,

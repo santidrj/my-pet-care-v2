@@ -55,7 +55,7 @@ This version covers **functional requirements** and an initial set of **non-func
 ## Business / domain rules
 
 - **Activity type** is the kind of physical activity (walk, frisbee play, running, …). **Activity** is a record the Owner registers that a Pet performed an Activity type at a point in time. Prefer these terms over Exercise / workout / session / log.
-- **GPS Activity** is an Activity whose Activity type is GPS-capable; create/update requires a route/GPS payload. Non-GPS types reject or ignore route payloads.
+- **GPS Activity** is an Activity whose Activity type is GPS-capable; create/update requires a route/GPS payload. A route on a non-GPS type is rejected as a validation error, not ignored.
 - Custom Activity types are **Owner-scoped** (usable for all of that Owner’s Pets). Platform defaults are global and not editable or deletable by Owners.
 - Deleting a custom Activity type: **hard delete** if no historical Activity references it; otherwise **soft-retire** (hidden from the pickable catalog; existing Activities still resolve label and GPS-capable flag).
 - An Activity records: Pet id, Activity type, timestamp, **duration** (required), optional type-dependent **Activity amount**, calories burned, optional media references, optional notes; GPS Activities also require route/GPS.
@@ -234,7 +234,7 @@ This version covers **functional requirements** and an initial set of **non-func
 2. On success, that Forum or Group activity can present the Share under share-visibility rules.
 3. Share fails if the caller is not the Pet’s Owner or the Activity does not exist.
 4. Share fails if the Pet is deactivated in Owner & Pet Manager.
-5. Share fails closed if the Forum or Group activity does not exist or the Community collaborator cannot accept the share reference (including while that collaborator does not yet exist).
+5. Share fails closed, and no Share is stored, when the Forum or Group activity does not exist or the Community collaborator cannot accept the share reference. A missing Forum or Group activity is a not-found failure; only the Community collaborator can report it. A collaborator that cannot be reached, including while it does not yet exist, is an unavailable failure.
 6. The Community itself and a Shared location are not valid audiences.
 
 ### AM-FR-012 — Create external share and resolve shares

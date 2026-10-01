@@ -73,7 +73,7 @@ This document defines the requirements for the **Authentication Service** of the
 - The Owner password hash is an Argon2id string stored by Owner & Pet Manager (ADR-0012, which supersedes ADR-0009). This service verifies that hash. It does not share Owner & Pet Manager’s database.
 - Platform client secrets are stored by this service as Argon2id hashes (same family as ADR-0012). Cleartext secrets are not retained after provisioning.
 - The Owner hash and active status are read from Owner & Pet Manager over a synchronous call. The Owner hash is readable by this service only, not by Owners or other clients.
-- Owner & Pet Manager enforces password strength on create and on password change: at least 8 characters, at least 64 characters allowed, any character including spaces, and rejection of commonly used or known-breached passwords (ADR-0012). No mix of letters, digits, or symbols is required. Login does not re-check strength.
+- Owner & Pet Manager enforces password strength on create and on password change: 8 to 128 characters (ADR-0018), any character including spaces, and rejection of commonly used or known-breached passwords (ADR-0012). No mix of letters, digits, or symbols is required. Login does not re-check strength.
 - Each service keeps its own data. Cross-service calls are synchronous, as in ADR-0002.
 
 ## Assumptions

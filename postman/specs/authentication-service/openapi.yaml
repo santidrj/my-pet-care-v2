@@ -424,17 +424,9 @@ components:
       minLength: 8
       maxLength: 128
       description: |
-        At least 8 characters; service allows at least 64 (documented max 128).
-        Any character including spaces. Commonly used or known-breached passwords
+        8 to 128 characters, counted as Unicode code points with no normalization
+        (ADR-0018). Any character including spaces. Commonly used or known-breached passwords
         are rejected on reset complete via Owner & Pet Manager (ADR-0012).
-    PlatformServiceId:
-      type: string
-      enum:
-        - owner-pet-manager
-        - pet-health-service
-        - activity-manager
-        - authentication-service
-        - community
     HealthStatus:
       type: object
       additionalProperties: false
@@ -507,8 +499,9 @@ components:
           type: string
           minLength: 1
           description: |
-            Candidate platform service id. A value outside the five fails
-            the same way as a wrong secret.
+            The platform client's service id. Deliberately not an enum: an unknown
+            id fails as rejected credentials (`401`), the same as a wrong secret,
+            so the response does not reveal which ids exist (AUTH-FR-007).
         secret:
           type: string
           minLength: 1

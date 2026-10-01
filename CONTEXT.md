@@ -57,7 +57,7 @@ A completed hygiene event for a Pet (for example a bath), registered at a point 
 _Avoid_: Bath, grooming session, hygiene event
 
 **Wash schedule**:
-A recurring interval set by the Owner that determines when a Pet’s next Wash is due. When a schedule exists, the next due time is from the last Wash plus the interval, or from the schedule’s start date when no Wash has been registered yet. When no schedule exists, the Pet is not due for a Wash by schedule.
+A recurring interval set by the Owner, anchored on a start date, that determines when a Pet’s next Wash is due. The start date is never in the past when it is set or replaced. Next due is the start date until a Wash is registered on or after it; after that, it is the latest such Wash plus the interval. Washes before the start date do not count, so replacing the start date restarts the schedule. When no schedule exists, the Pet is not due for a Wash by schedule.
 _Avoid_: Wash appointment, hygiene plan, grooming schedule
 
 **Medical record**:
