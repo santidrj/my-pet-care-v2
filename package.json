@@ -12,6 +12,7 @@
     "typecheck": "pnpm --filter @my-pet-care/contracts typecheck && pnpm --filter @my-pet-care/contracts build && pnpm --filter @my-pet-care/platform-service-authenticator typecheck && pnpm --filter @my-pet-care/platform-service-authenticator build && pnpm --filter @my-pet-care/service-skeleton typecheck && pnpm --filter @my-pet-care/service-skeleton build && pnpm --filter \"./services/*\" typecheck",
     "test:opm": "pnpm --filter @my-pet-care/owner-pet-manager test",
     "test:opm:persistence": "pnpm --filter @my-pet-care/owner-pet-manager test:persistence",
+    "db:migrate:opm": "pnpm --filter @my-pet-care/owner-pet-manager db:migrate",
     "test:auth": "pnpm --filter @my-pet-care/authentication-service test"
   }
 }

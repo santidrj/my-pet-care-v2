@@ -5,6 +5,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { v7 as uuidv7 } from "uuid";
 import { createDrizzleStore } from "../src/infrastructure/drizzle-store.ts";
+import { applyMigrations } from "../src/migrate.ts";
 import * as schema from "../src/schema.ts";
 
 /** Default URL used by `pnpm test:opm:persistence` / `test:persistence`. */
@@ -68,6 +69,19 @@ async function ensureDatabaseExists(connectionString: string): Promise<void> {
   }
 }
 
+/** Drop app tables and the drizzle migration journal so `applyMigrations` is a clean replay. */
+async function resetSchema(connectionString: string): Promise<void> {
+  const pool = new Pool({ connectionString });
+  const db = drizzle({ client: pool });
+  try {
+    await db.execute(sql`drop table if exists pets cascade`);
+    await db.execute(sql`drop table if exists owners cascade`);
+    await db.execute(sql`drop schema if exists drizzle cascade`);
+  } finally {
+    await pool.end();
+  }
+}
+
 describe("Postgres persistence", {
   skip: databaseUrl === undefined || databaseUrl.length === 0,
 }, () => {
@@ -75,38 +89,11 @@ describe("Postgres persistence", {
     assert.ok(databaseUrl);
     assertNotProtectedDatabase(databaseUrl);
     await ensureDatabaseExists(databaseUrl);
+    await resetSchema(databaseUrl);
+    await applyMigrations(databaseUrl);
 
     const pool = new Pool({ connectionString: databaseUrl });
     const db = drizzle({ client: pool, schema });
-
-    await db.execute(sql`drop table if exists pets cascade`);
-    await db.execute(sql`drop table if exists owners cascade`);
-    await db.execute(sql`
-      create table owners (
-        id uuid primary key,
-        username text not null,
-        email text not null,
-        password_hash text not null,
-        photo text,
-        active boolean not null default true,
-        pet_list_visibility text not null default 'private'
-      )
-    `);
-    await db.execute(sql`create unique index owners_username_uidx on owners (username)`);
-    await db.execute(sql`create unique index owners_email_lower_uidx on owners (lower(email))`);
-    await db.execute(sql`
-      create table pets (
-        id uuid primary key,
-        owner_id uuid not null references owners(id),
-        name text not null,
-        species text not null,
-        sex text not null,
-        breed text,
-        date_of_birth text,
-        photo text,
-        active boolean not null default true
-      )
-    `);
 
     const store = createDrizzleStore(db);
     const ownerA = await store.owners.insert({

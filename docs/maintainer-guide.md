@@ -51,6 +51,7 @@ From the repository root:
 | `pnpm typecheck` | Typechecks those three packages, builds them, then typechecks every service. |
 | `pnpm test:opm` | Runs `@my-pet-care/owner-pet-manager` tests (`tsx --test test/**/*.test.ts`). Persistence tests skip unless `OPM_TEST_DATABASE_URL` is set. |
 | `pnpm test:opm:persistence` | Runs the Owner & Pet Manager Postgres persistence test against `owner_pet_manager_test` (never the dev database). |
+| `pnpm db:migrate:opm` | Applies Owner & Pet Manager drizzle-kit migrations. Requires `DATABASE_URL`. |
 
 Packages with a `test` script:
 
@@ -65,11 +66,26 @@ The community-collaborator stub has no `test` script. Service and skeleton tests
 
 Compose runs one Postgres server. The image creates `owner_pet_manager`. [docker/postgres/init/01-create-databases.sql](../docker/postgres/init/01-create-databases.sql) creates `pet_health_service`, `activity_manager`, `authentication_service`, and `owner_pet_manager_test`.
 
-Owner & Pet Manager, Pet Health Service, Activity Manager, and Authentication Service each have `src/schema.ts` and `drizzle.config.ts`. [ADR-0006](adr/0006-drizzle-orm.md) says schema changes ship as drizzle-kit migrations owned by that service. This repository has no migration directory and no migrate script. Startup checks that Postgres accepts a connection. It does not apply `src/schema.ts`.
+Owner & Pet Manager, Pet Health Service, Activity Manager, and Authentication Service each have `src/schema.ts` and `drizzle.config.ts`. [ADR-0006](adr/0006-drizzle-orm.md) says schema changes ship as drizzle-kit migrations owned by that service. Owner & Pet Manager is the first service with a committed migration directory (`services/owner-pet-manager/drizzle/`) and a migrate script. Startup checks that Postgres accepts a connection. It does not apply migrations.
+
+### Owner & Pet Manager migrations
+
+Schema changes start in `services/owner-pet-manager/src/schema.ts`. Generate SQL with drizzle-kit, commit the files under `drizzle/`, then apply with the same helper the persistence tests use:
+
+```bash
+# From the repository root — after editing src/schema.ts
+pnpm --filter @my-pet-care/owner-pet-manager db:generate
+
+# Apply pending migrations to the dev database
+DATABASE_URL=postgresql://my_pet_care:my_pet_care@localhost:5432/owner_pet_manager \
+  pnpm --filter @my-pet-care/owner-pet-manager db:migrate
+```
+
+`db:generate` writes into `services/owner-pet-manager/drizzle/` (SQL plus `meta/`). `db:migrate` runs `applyMigrations` from `src/migrate.ts` against `DATABASE_URL`. Do not hand-edit parallel DDL elsewhere.
 
 ### Persistence tests
 
-The Owner & Pet Manager persistence test drops and recreates tables. It must never target the `owner_pet_manager` (or other service) databases.
+The Owner & Pet Manager persistence test resets the test database and applies the same drizzle-kit migrations via `applyMigrations`. It must never target the `owner_pet_manager` (or other service) databases.
 
 ```bash
 docker compose up -d
@@ -77,13 +93,6 @@ pnpm test:opm:persistence
 ```
 
 That sets `OPM_TEST_DATABASE_URL` to `postgresql://my_pet_care:my_pet_care@localhost:5432/owner_pet_manager_test`. The test creates `owner_pet_manager_test` if the volume was initialized before that database existed. It refuses to run against protected database names (`owner_pet_manager`, and the other service databases).
-
-To apply the Owner & Pet Manager schema to the **dev** database (for a live `pnpm dev` stack), use the SQL file — do not use the persistence test for that:
-
-```bash
-psql postgresql://my_pet_care:my_pet_care@localhost:5432/owner_pet_manager \
-  -f services/owner-pet-manager/sql/001_owners_pets.sql
-```
 
 ## Before you change a service
 
@@ -155,4 +164,4 @@ Exercise the local Postman environments. Import or open the local project, choos
 - Authentication Service Local — [Contract artifacts](requirements/authentication-service-api.md#contract-artifacts)
 - Activity Manager Local — [Contract artifacts](requirements/activity-manager-api.md#contract-artifacts)
 
-A request that reads or writes a table fails until migrations exist. See [Databases](#databases).
+A request that reads or writes a table fails until migrations are applied. See [Databases](#databases) and [Owner & Pet Manager migrations](#owner--pet-manager-migrations).
