@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it, before } from "node:test";
-import { generateKeyPair, SignJWT, exportSPKI, importSPKI } from "jose";
+import {
+  generateKeyPair,
+  generateSecret,
+  SignJWT,
+  exportSPKI,
+  importSPKI,
+} from "jose";
 import { verifyToken } from "../src/index.ts";
 
 const ALG = "EdDSA";
@@ -18,17 +24,24 @@ describe("verifyToken", () => {
     privateKey = pair.privateKey;
   });
 
-  async function sign(claims: Record<string, unknown>, options: {
-    aud: string;
-    exp?: string | number;
-    nbf?: string | number;
-  }) {
+  async function sign(
+    claims: Record<string, unknown>,
+    options: {
+      aud: string;
+      exp?: string | number | null;
+      nbf?: string | number;
+      alg?: string;
+      key?: CryptoKey | Uint8Array;
+    },
+  ) {
     let jwt = new SignJWT(claims)
-      .setProtectedHeader({ alg: ALG })
+      .setProtectedHeader({ alg: options.alg ?? ALG })
       .setIssuer(ISSUER)
       .setAudience(options.aud)
       .setIssuedAt();
-    if (options.exp !== undefined) {
+    if (options.exp === null) {
+      // omit exp intentionally
+    } else if (options.exp !== undefined) {
       jwt = jwt.setExpirationTime(options.exp);
     } else {
       jwt = jwt.setExpirationTime("1h");
@@ -36,14 +49,11 @@ describe("verifyToken", () => {
     if (options.nbf !== undefined) {
       jwt = jwt.setNotBefore(options.nbf);
     }
-    return jwt.sign(privateKey);
+    return jwt.sign(options.key ?? privateKey);
   }
 
   it("returns an owner actor for a valid Owner JWT", async () => {
-    const token = await sign(
-      { ownerId: "owner-123" },
-      { aud: OWNER_AUD },
-    );
+    const token = await sign({ ownerId: "owner-123" }, { aud: OWNER_AUD });
 
     const actor = await verifyToken(token, { publicKey });
 
@@ -73,6 +83,36 @@ describe("verifyToken", () => {
     await assert.rejects(() => verifyToken(token, { publicKey }));
   });
 
+  it("rejects a JWT with empty ownerId alongside a valid service", async () => {
+    const token = await sign(
+      { ownerId: "", service: "owner-pet-manager" },
+      { aud: PLATFORM_AUD },
+    );
+
+    await assert.rejects(() => verifyToken(token, { publicKey }));
+  });
+
+  it("rejects a JWT with non-string ownerId alongside a valid service", async () => {
+    const token = await sign(
+      { ownerId: 42, service: "owner-pet-manager" },
+      { aud: PLATFORM_AUD },
+    );
+
+    await assert.rejects(() => verifyToken(token, { publicKey }));
+  });
+
+  it("rejects a JWT with an empty ownerId and no service", async () => {
+    const token = await sign({ ownerId: "" }, { aud: OWNER_AUD });
+
+    await assert.rejects(() => verifyToken(token, { publicKey }));
+  });
+
+  it("rejects a JWT with a non-string ownerId and no service", async () => {
+    const token = await sign({ ownerId: 42 }, { aud: OWNER_AUD });
+
+    await assert.rejects(() => verifyToken(token, { publicKey }));
+  });
+
   it("rejects a JWT that carries neither ownerId nor service", async () => {
     const token = await sign({}, { aud: OWNER_AUD });
 
@@ -80,10 +120,7 @@ describe("verifyToken", () => {
   });
 
   it("rejects a JWT with wrong audience for an Owner claim shape", async () => {
-    const token = await sign(
-      { ownerId: "owner-123" },
-      { aud: PLATFORM_AUD },
-    );
+    const token = await sign({ ownerId: "owner-123" }, { aud: PLATFORM_AUD });
 
     await assert.rejects(() => verifyToken(token, { publicKey }));
   });
@@ -131,6 +168,22 @@ describe("verifyToken", () => {
     await assert.rejects(() => verifyToken(token, { publicKey }));
   });
 
+  it("rejects a JWT without an exp claim", async () => {
+    const token = await sign({ ownerId: "owner-123" }, { aud: OWNER_AUD, exp: null });
+
+    await assert.rejects(() => verifyToken(token, { publicKey }));
+  });
+
+  it("rejects a JWT that is not signed with EdDSA", async () => {
+    const secret = await generateSecret("HS256");
+    const token = await sign(
+      { ownerId: "owner-123" },
+      { aud: OWNER_AUD, alg: "HS256", key: secret },
+    );
+
+    await assert.rejects(() => verifyToken(token, { publicKey }));
+  });
+
   it("rejects an expired JWT beyond the clock skew window", async () => {
     const token = await sign(
       { ownerId: "owner-123" },
@@ -165,10 +218,7 @@ describe("verifyToken", () => {
   it("accepts a public key imported from SPKI", async () => {
     const spki = await exportSPKI(publicKey);
     const imported = await importSPKI(spki, ALG);
-    const token = await sign(
-      { ownerId: "owner-123" },
-      { aud: OWNER_AUD },
-    );
+    const token = await sign({ ownerId: "owner-123" }, { aud: OWNER_AUD });
 
     const actor = await verifyToken(token, { publicKey: imported });
 
