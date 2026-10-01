@@ -1,0 +1,14 @@
+node_modules
+**/node_modules
+**/dist
+.git
+.docker
+config/instance.json
+**/.env
+**/.env.*
+*.log
+.claude
+.cursor
+docs
+postman
+**/*.md

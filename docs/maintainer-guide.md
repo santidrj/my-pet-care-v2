@@ -29,7 +29,9 @@ pnpm workspace packages are `packages/*` and `services/*` ([pnpm-workspace.yaml]
 - pnpm 12.6.0 (`corepack enable`)
 - Docker
 
-`docker compose up -d` starts PostgreSQL 18. `pnpm dev` listens on `127.0.0.1`:
+`docker compose up --build` starts PostgreSQL 18 and all five processes. Published ports bind the host loopback only. Inside the Compose network the processes listen on `0.0.0.0` (`LISTEN_HOST`) and call each other by service name. Bootstrap writes `.docker/` (gitignored): an `instance.json` for this deployment, the Ed25519 key pair, and `reset-links.txt`. It copies `config/shared.json` into that directory on every boot and sets `MPC_CONFIG_DIR` there.
+
+`pnpm dev` is the edit loop. It listens on `127.0.0.1`. Start only Postgres for it with `docker compose up -d postgres`, so it does not share ports with the Compose app containers:
 
 | Process | Port |
 | --- | --- |
@@ -83,7 +85,7 @@ The community-collaborator stub has no `test` script. Service and skeleton tests
 
 Compose runs one Postgres server. The image creates `owner_pet_manager`. [docker/postgres/init/01-create-databases.sql](../docker/postgres/init/01-create-databases.sql) creates `pet_health_service`, `activity_manager`, `authentication_service`, and `owner_pet_manager_test`.
 
-Owner & Pet Manager, Pet Health Service, Activity Manager, and Authentication Service each have `src/schema.ts` and `drizzle.config.ts`. [ADR-0006](adr/0006-drizzle-orm.md) says schema changes ship as drizzle-kit migrations owned by that service. Owner & Pet Manager is the first service with a committed migration directory (`services/owner-pet-manager/drizzle/`) and a migrate script. Startup checks that Postgres accepts a connection. It does not apply migrations.
+Owner & Pet Manager, Pet Health Service, Activity Manager, and Authentication Service each have `src/schema.ts` and `drizzle.config.ts`. [ADR-0006](adr/0006-drizzle-orm.md) says schema changes ship as drizzle-kit migrations owned by that service. Owner & Pet Manager is the first service with a committed migration directory (`services/owner-pet-manager/drizzle/`) and a migrate script. Startup checks that Postgres accepts a connection. It does not apply migrations. `docker compose up` applies Owner & Pet Manager’s drizzle migrations and creates the Authentication Service tables in `docker/postgres/authentication-service.sql` when they are missing. Pet Health Service and Activity Manager have no tables to apply. A second `up` leaves existing rows in place.
 
 ### Owner & Pet Manager migrations
 
@@ -104,7 +106,7 @@ MPC_CONFIG_DIR="$(pwd)/config" pnpm --filter @my-pet-care/owner-pet-manager db:m
 The Owner & Pet Manager persistence test drops `owners`, `pets`, and the drizzle migration journal on the test database, then reapplies the same drizzle-kit migrations via `applyMigrations`. It must never target the `owner_pet_manager` (or other service) databases.
 
 ```bash
-docker compose up -d
+docker compose up -d postgres
 pnpm test:opm:persistence
 ```
 
@@ -136,7 +138,37 @@ Pet Health Service has no collection, environment, or spec here. How to open a p
 
 ## Live local run
 
-Do this in one shell. Services load [startup settings](#startup-settings) from `config/`, not from a `.env` file. Keep the key pair outside the repository. `.gitignore` ignores `.env` files and does not ignore PEM files.
+### Compose
+
+From the repository root:
+
+```bash
+docker compose up --build
+```
+
+That builds one image, starts Postgres, and runs a one-shot `bootstrap` container before the five processes. Bootstrap creates any missing service database, applies Owner & Pet Manager’s drizzle migrations, creates the Authentication Service tables, and writes `.docker/instance.json` when that file is absent. The platform secrets and JWT paths in that file are what the processes read. Reset links append to `.docker/reset-links.txt`. A later `docker compose up` reuses `.docker/instance.json` and the key pair. Do not run `pnpm dev` against the same ports at the same time.
+
+`GET /health` returns `{ "status": "ok" }` on `http://127.0.0.1:3001` through `http://127.0.0.1:3005`.
+
+Create an Owner on Owner & Pet Manager, then sign in on Authentication Service. Password rules are at least 8 characters and not on the common-password denylist.
+
+```bash
+curl -sS -X POST http://127.0.0.1:3001/owners \
+  -H 'content-type: application/json' \
+  -d '{"username":"ada","email":"ada@example.com","password":"correct-horse"}'
+
+curl -sS -X POST http://127.0.0.1:3004/auth/login \
+  -H 'content-type: application/json' \
+  -d '{"identifier":"ada","password":"correct-horse"}'
+```
+
+Use the access token as a Bearer token on authenticated routes. A platform client-credentials call uses `serviceId` plus `platform.serviceSecret` from `.docker/instance.json` against `POST http://127.0.0.1:3004/oauth/token`. Pet Health Service and Activity Manager have no tables yet, so routes that store those records have nowhere to write.
+
+Stop the stack with `docker compose down`. That keeps the Postgres volume and `.docker/`.
+
+### Edit loop (`pnpm dev`)
+
+Do this in one shell when you want the TypeScript watch processes instead of the image. Services load [startup settings](#startup-settings) from `config/`, not from a `.env` file. Keep the key pair outside the repository. `.gitignore` ignores `.env` files and does not ignore PEM files.
 
 Create an Ed25519 key pair. Authentication Service reads the private PEM path from `authenticationService.jwtPrivateKeyPath`. Every other service uses `platform.jwtPublicKeyPath` for the public PEM.
 
@@ -158,10 +190,10 @@ Shared ports and local base URLs live in committed `config/shared.json`. Owner &
 
 Authentication Service signs Owner and platform access tokens, ensures its own platform client before it listens, and writes each reset link when `mailSink` is set. Owner & Pet Manager, Pet Health Service, Activity Manager, and the Community stub call ensure with the same setup secret before they listen. The Community stub registers service id `community`. A client-credentials grant succeeds after that row exists.
 
-Start Postgres, install dependencies, and start the processes. Ports are listed in [Local stack](#local-stack).
+Start only Postgres, install dependencies, and start the watch processes. `docker compose up -d` without a service name also starts the app containers and takes the same ports. Ports are listed in [Local stack](#local-stack).
 
 ```bash
-docker compose up -d
+docker compose up -d postgres
 pnpm install
 pnpm dev
 ```

@@ -1,3 +1,12 @@
+x-node: &node
+  image: my-pet-care:local
+  build:
+    context: .
+    dockerfile: Dockerfile
+  environment: &node-env
+    LISTEN_HOST: 0.0.0.0
+    MPC_CONFIG_DIR: /var/lib/mpc
+
 services:
   postgres:
     image: postgres:18
@@ -16,8 +25,163 @@ services:
       timeout: 5s
       retries: 20
 
-# Community collaborator stub is a local Node process (port 3005), not containerized:
-#   pnpm --filter @my-pet-care/community-collaborator-stub dev
+  bootstrap:
+    <<: *node
+    command: ["bootstrap"]
+    environment:
+      MPC_DIR: /var/lib/mpc
+      PGHOST: postgres
+      PGUSER: my_pet_care
+      PGPASSWORD: my_pet_care
+    volumes:
+      - ./.docker:/var/lib/mpc
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+    restart: "no"
+
+  authentication-service:
+    <<: *node
+    command: ["node", "services/authentication-service/dist/main.js"]
+    environment:
+      <<: *node-env
+    ports:
+      - "127.0.0.1:3004:3004"
+    volumes:
+      - ./.docker:/var/lib/mpc
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3004/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+
+  owner-pet-manager:
+    <<: *node
+    command: ["node", "services/owner-pet-manager/dist/main.js"]
+    environment:
+      <<: *node-env
+    ports:
+      - "127.0.0.1:3001:3001"
+    volumes:
+      - ./.docker:/var/lib/mpc:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+      authentication-service:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  pet-health-service:
+    <<: *node
+    command: ["node", "services/pet-health-service/dist/main.js"]
+    environment:
+      <<: *node-env
+    ports:
+      - "127.0.0.1:3002:3002"
+    volumes:
+      - ./.docker:/var/lib/mpc:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3002/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+      authentication-service:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  activity-manager:
+    <<: *node
+    command: ["node", "services/activity-manager/dist/main.js"]
+    environment:
+      <<: *node-env
+    ports:
+      - "127.0.0.1:3003:3003"
+    volumes:
+      - ./.docker:/var/lib/mpc:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3003/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+      authentication-service:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  community-collaborator-stub:
+    <<: *node
+    command: ["node", "services/community-collaborator-stub/dist/main.js"]
+    environment:
+      <<: *node-env
+    ports:
+      - "127.0.0.1:3005:3005"
+    volumes:
+      - ./.docker:/var/lib/mpc:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3005/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+      authentication-service:
+        condition: service_healthy
 
 volumes:
   postgres-data:

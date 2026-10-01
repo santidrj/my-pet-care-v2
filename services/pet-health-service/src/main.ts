@@ -61,10 +61,13 @@ try {
       reject(err);
     };
     app.server.once("error", fail);
-    app.server.listen({ host: "127.0.0.1", port: service.port }, () => {
-      (app.server as unknown as NodeJS.EventEmitter).removeListener("error", fail);
-      resolve();
-    });
+    app.server.listen(
+      { host: process.env.LISTEN_HOST?.trim() || "127.0.0.1", port: service.port },
+      () => {
+        (app.server as unknown as NodeJS.EventEmitter).removeListener("error", fail);
+        resolve();
+      },
+    );
   });
 } catch (err) {
   app.log.error({ service: serviceName, msg: "Service failed to start.", err });
