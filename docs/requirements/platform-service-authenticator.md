@@ -80,9 +80,9 @@ This document defines the requirements for the **platform-service authenticator*
 
 1. A valid Owner JWT (`iss` = `my-pet-care:authentication-service`, `aud` = `my-pet-care`, claim `ownerId`, no `service`) yields a trusted actor that is that Owner’s id.
 2. A valid platform-service JWT (`iss` = `my-pet-care:authentication-service`, `aud` = `my-pet-care:platform`, claim `service` set to exactly one allowed service id, no `ownerId`) yields a trusted actor that is that calling service’s id.
-3. A missing, invalid, forged, expired, or wrong-`aud`/`iss` JWT fails the request with an unauthorized Problem Details response. The body does not leak which check failed beyond the uniform unauthorized shape.
-4. A JWT that carries both `ownerId` and `service`, or neither, is rejected.
-5. Verification uses local signature checking with Authentication Service trust material. It does not call Authentication Service per request.
+3. A missing, invalid, forged, expired, missing-`exp`, non-EdDSA, or wrong-`aud`/`iss` JWT fails the request with an unauthorized Problem Details response. The body does not leak which check failed beyond the uniform unauthorized shape.
+4. A JWT that carries both `ownerId` and `service`, or neither, is rejected. `ownerId` must be a non-empty string; an empty or non-string `ownerId` (alone or with `service`) is rejected. `service` must be one allowed platform service id.
+5. Verification uses local signature checking with Authentication Service trust material. It does not call Authentication Service per request. Only the EdDSA algorithm is accepted, and `exp` is required.
 
 ### PSA-FR-002 — Present outbound platform credential
 

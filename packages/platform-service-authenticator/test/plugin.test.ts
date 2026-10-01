@@ -11,6 +11,7 @@ import {
 const ALG = "EdDSA";
 const ISSUER = "my-pet-care:authentication-service";
 const OWNER_AUD = "my-pet-care";
+const PLATFORM_AUD = "my-pet-care:platform";
 
 describe("isPublicRoute", () => {
   it("matches exact method and path", () => {
@@ -42,13 +43,35 @@ describe("platform-service authenticator plugin", () => {
     privateKey = pair.privateKey;
   });
 
-  async function signOwner(ownerId: string): Promise<string> {
+  async function signOwner(ownerId: string, exp: string | number = "1h"): Promise<string> {
     return new SignJWT({ ownerId })
       .setProtectedHeader({ alg: ALG })
       .setIssuer(ISSUER)
       .setAudience(OWNER_AUD)
       .setIssuedAt()
-      .setExpirationTime("1h")
+      .setExpirationTime(exp)
+      .sign(privateKey);
+  }
+
+  async function signPlatform(
+    service: string,
+    exp: string | number = "1h",
+  ): Promise<string> {
+    return new SignJWT({ service })
+      .setProtectedHeader({ alg: ALG })
+      .setIssuer(ISSUER)
+      .setAudience(PLATFORM_AUD)
+      .setIssuedAt()
+      .setExpirationTime(exp)
+      .sign(privateKey);
+  }
+
+  async function signOwnerWithoutExp(ownerId: string): Promise<string> {
+    return new SignJWT({ ownerId })
+      .setProtectedHeader({ alg: ALG })
+      .setIssuer(ISSUER)
+      .setAudience(OWNER_AUD)
+      .setIssuedAt()
       .sign(privateKey);
   }
 
@@ -129,6 +152,24 @@ describe("platform-service authenticator plugin", () => {
     }
   });
 
+  it("rejects a malformed Authorization header with the uniform unauthorized shape", async () => {
+    const app = await buildApp();
+    try {
+      const cases = ["Basic abc", "Bearer", "Bearer ", "Token abc"];
+      for (const authorization of cases) {
+        const response = await app.inject({
+          method: "GET",
+          url: "/owners/owner-1",
+          headers: { authorization },
+        });
+        assert.equal(response.statusCode, 401);
+        assert.deepEqual(response.json(), unauthorizedProblem);
+      }
+    } finally {
+      await app.close();
+    }
+  });
+
   it("exposes a trusted actor on a protected route with a valid Owner JWT", async () => {
     const app = await buildApp();
     try {
@@ -142,6 +183,84 @@ describe("platform-service authenticator plugin", () => {
       assert.deepEqual(response.json(), {
         actor: { kind: "owner", ownerId: "owner-123" },
       });
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("exposes a trusted platform actor on a protected route with a valid platform JWT", async () => {
+    const app = await buildApp();
+    try {
+      const token = await signPlatform("pet-health-service");
+      const response = await app.inject({
+        method: "GET",
+        url: "/owners/owner-123",
+        headers: { authorization: `Bearer ${token}` },
+      });
+      assert.equal(response.statusCode, 200);
+      assert.deepEqual(response.json(), {
+        actor: { kind: "platform", service: "pet-health-service" },
+      });
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("rejects an expired token with the uniform unauthorized shape", async () => {
+    const app = await buildApp();
+    try {
+      const token = await signOwner(
+        "owner-123",
+        Math.floor(Date.now() / 1000) - 120,
+      );
+      const response = await app.inject({
+        method: "GET",
+        url: "/owners/owner-123",
+        headers: { authorization: `Bearer ${token}` },
+      });
+      assert.equal(response.statusCode, 401);
+      assert.deepEqual(response.json(), unauthorizedProblem);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("rejects a token without exp with the uniform unauthorized shape", async () => {
+    const app = await buildApp();
+    try {
+      const token = await signOwnerWithoutExp("owner-123");
+      const response = await app.inject({
+        method: "GET",
+        url: "/owners/owner-123",
+        headers: { authorization: `Bearer ${token}` },
+      });
+      assert.equal(response.statusCode, 401);
+      assert.deepEqual(response.json(), unauthorizedProblem);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("rejects empty ownerId alongside service with the uniform unauthorized shape", async () => {
+    const app = await buildApp();
+    try {
+      const token = await new SignJWT({
+        ownerId: "",
+        service: "owner-pet-manager",
+      })
+        .setProtectedHeader({ alg: ALG })
+        .setIssuer(ISSUER)
+        .setAudience(PLATFORM_AUD)
+        .setIssuedAt()
+        .setExpirationTime("1h")
+        .sign(privateKey);
+      const response = await app.inject({
+        method: "GET",
+        url: "/owners/owner-123",
+        headers: { authorization: `Bearer ${token}` },
+      });
+      assert.equal(response.statusCode, 401);
+      assert.deepEqual(response.json(), unauthorizedProblem);
     } finally {
       await app.close();
     }

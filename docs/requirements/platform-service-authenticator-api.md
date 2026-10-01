@@ -20,9 +20,9 @@ Applies to every non-allowlisted route on services that use the authenticator ([
 | ------- | --------------------- | ----------- |
 | Valid Owner JWT | Trusted actor `{ kind: "owner", ownerId }` for the handler | [PSA-FR-001](./platform-service-authenticator.md#psa-fr-001--verify-inbound-bearer-jwt), [PSA-FR-005](./platform-service-authenticator.md#psa-fr-005--actor-only-no-authorization-policy) |
 | Valid platform-service JWT | Trusted actor `{ kind: "platform", service }` (`service` one of `owner-pet-manager`, `pet-health-service`, `activity-manager`, `authentication-service`, `community`) | same |
-| Missing, invalid, forged, expired, wrong `aud`/`iss`, both or neither actor claim | `401` unauthorized Problem Details (uniform; non-leaky) | [PSA-FR-001](./platform-service-authenticator.md#psa-fr-001--verify-inbound-bearer-jwt), [PSA-NFR-003](./platform-service-authenticator.md#psa-nfr-003--uniform-unauthorized-failures) |
+| Missing, invalid, forged, expired, missing `exp`, non-EdDSA, wrong `aud`/`iss`, both or neither actor claim, empty/non-string `ownerId` | `401` unauthorized Problem Details (uniform; non-leaky) | [PSA-FR-001](./platform-service-authenticator.md#psa-fr-001--verify-inbound-bearer-jwt), [PSA-NFR-003](./platform-service-authenticator.md#psa-nfr-003--uniform-unauthorized-failures) |
 
-Verification is local (`jose` + Authentication Service trust material). It does not call Authentication Service per request. Clock skew leeway for `exp` / `nbf` is ±60 seconds ([PSA-NFR-004](./platform-service-authenticator.md#psa-nfr-004--clock-skew-leeway)).
+Verification is local (`jose` + Authentication Service trust material). It does not call Authentication Service per request. Only EdDSA is accepted; `exp` is required. Clock skew leeway for `exp` / `nbf` is ±60 seconds ([PSA-NFR-004](./platform-service-authenticator.md#psa-nfr-004--clock-skew-leeway)).
 
 ### Trusted actor (in-process)
 
