@@ -8,7 +8,9 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test test/**/*.test.ts",
-    "test:persistence": "OPM_TEST_DATABASE_URL=postgresql://my_pet_care:my_pet_care@localhost:5432/owner_pet_manager_test tsx --test test/persistence.test.ts"
+    "test:persistence": "OPM_TEST_DATABASE_URL=postgresql://my_pet_care:my_pet_care@localhost:5432/owner_pet_manager_test tsx --test test/persistence.test.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/migrate.ts"
   },
 
   "dependencies": {
