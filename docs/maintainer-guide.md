@@ -16,6 +16,7 @@ pnpm workspace packages are `packages/*` and `services/*` ([pnpm-workspace.yaml]
 | `packages/contracts` | `@my-pet-care/contracts` | Shared contracts used by the services. |
 | `packages/platform-service-authenticator` | `@my-pet-care/platform-service-authenticator` | Shared module that verifies inbound Bearer JWTs and presents platform-service credentials on outbound calls. |
 | `packages/service-skeleton` | `@my-pet-care/service-skeleton` | Shared Fastify shell: validation Problem Details, request logs, correlation, and outbound client logs. |
+| `packages/service-config` | `@my-pet-care/service-config` | Loads `shared.json` and `instance.json` from `MPC_CONFIG_DIR`, merges them, applies `MPC_*` overrides, and validates with Zod. See [ADR-0024](adr/0024-startup-settings-in-two-json-files.md). |
 | `services/owner-pet-manager` | `@my-pet-care/owner-pet-manager` | Owner & Pet Manager. |
 | `services/pet-health-service` | `@my-pet-care/pet-health-service` | Pet Health Service. |
 | `services/activity-manager` | `@my-pet-care/activity-manager` | Activity Manager. |
@@ -40,18 +41,34 @@ pnpm workspace packages are `packages/*` and `services/*` ([pnpm-workspace.yaml]
 
 `GET /health` returns `{ "status": "ok" }`.
 
+## Startup settings
+
+Each backend process reads two JSON files once at startup from the directory in `MPC_CONFIG_DIR`. [ADR-0024](adr/0024-startup-settings-in-two-json-files.md) is the decision record. Format and library comparison: [startup-config-format.md](research/startup-config-format.md).
+
+| File | In git | Role |
+| --- | --- | --- |
+| `config/shared.json` | yes | Defaults shared by every deployment (ports `3001`–`3005`, local base URLs, `logLevel`, and similar). |
+| `config/instance.json` | no | Partial overlay for this deployment: database URLs, platform secrets, JWT key paths, reset-link template, optional `mailSink`. |
+| `config/instance.example.json` | yes | Template to copy when creating `instance.json`. |
+
+Copy the example, then fill in the instance overlay. Both `shared.json` and `instance.json` must exist before a process starts. The instance file only needs leaves that differ from shared or that have no shared default (secrets and database URLs). Omitted optional leaves keep the shared value or the code default described in the ADR.
+
+After the merge, a non-empty environment variable `MPC_<SECTION>_<LEAF>` replaces one leaf (for example `MPC_OWNER_PET_MANAGER_PORT` for `ownerPetManager.port`). Empty values are ignored. Tests do not load these files; they keep using their own variables (for example `OPM_TEST_DATABASE_URL`).
+
+Root `pnpm dev` sets `MPC_CONFIG_DIR` to the repository `config/` directory. Migrate scripts and drizzle-kit use the same directory and need only that service’s `databaseUrl` in the merged document.
+
 ## Commands
 
 From the repository root:
 
 | Command | What it does |
 | --- | --- |
-| `pnpm dev` | Builds `@my-pet-care/contracts`, `@my-pet-care/platform-service-authenticator`, and `@my-pet-care/service-skeleton`, then starts every package under `services/*`. Each service `dev` script sets `DATABASE_URL` and `PORT`. The stub script sets `PORT` only. |
+| `pnpm dev` | Builds workspace packages (including `@my-pet-care/service-config` when present), then starts every package under `services/*` with `MPC_CONFIG_DIR` pointing at `config/`. |
 | `pnpm build` | Builds those three packages, then every service. |
 | `pnpm typecheck` | Typechecks those three packages, builds them, then typechecks every service. |
 | `pnpm test:opm` | Runs `@my-pet-care/owner-pet-manager` tests (`tsx --test test/**/*.test.ts`). Persistence tests skip unless `OPM_TEST_DATABASE_URL` is set. |
 | `pnpm test:opm:persistence` | Runs the Owner & Pet Manager Postgres persistence test against `owner_pet_manager_test` (never the dev database). |
-| `pnpm db:migrate:opm` | Applies Owner & Pet Manager drizzle-kit migrations. Requires `DATABASE_URL`. |
+| `pnpm db:migrate:opm` | Applies Owner & Pet Manager drizzle-kit migrations. Requires `MPC_CONFIG_DIR` and a merged `ownerPetManager.databaseUrl`. |
 
 Packages with a `test` script:
 
@@ -77,11 +94,10 @@ Schema changes start in `services/owner-pet-manager/src/schema.ts`. Generate SQL
 pnpm --filter @my-pet-care/owner-pet-manager db:generate
 
 # Apply pending migrations to the dev database
-DATABASE_URL=postgresql://my_pet_care:my_pet_care@localhost:5432/owner_pet_manager \
-  pnpm --filter @my-pet-care/owner-pet-manager db:migrate
+MPC_CONFIG_DIR="$(pwd)/config" pnpm --filter @my-pet-care/owner-pet-manager db:migrate
 ```
 
-`db:generate` writes into `services/owner-pet-manager/drizzle/` (SQL plus `meta/`). The committed migration SQL (for example `drizzle/0000_owners_pets.sql`) is the DDL applied to dev and test databases. `db:migrate` runs `applyMigrations` from `src/migrate.ts` against `DATABASE_URL`. Do not maintain a second, hand-applied DDL path beside `drizzle/`.
+`db:generate` writes into `services/owner-pet-manager/drizzle/` (SQL plus `meta/`). The committed migration SQL (for example `drizzle/0000_owners_pets.sql`) is the DDL applied to dev and test databases. `db:migrate` runs `applyMigrations` from `src/migrate.ts` using `ownerPetManager.databaseUrl` from the merged config. Do not maintain a second, hand-applied DDL path beside `drizzle/`.
 
 ### Persistence tests
 
@@ -120,9 +136,9 @@ Pet Health Service has no collection, environment, or spec here. How to open a p
 
 ## Live local run
 
-Do this in one shell. No service loads a `.env` file. Keep the key pair outside the repository. `.gitignore` ignores `.env` files and does not ignore PEM files.
+Do this in one shell. Services load [startup settings](#startup-settings) from `config/`, not from a `.env` file. Keep the key pair outside the repository. `.gitignore` ignores `.env` files and does not ignore PEM files.
 
-Create an Ed25519 key pair. Authentication Service reads the private PEM to sign access tokens. Owner & Pet Manager and the other services read only the public PEM.
+Create an Ed25519 key pair. Authentication Service reads the private PEM path from `authenticationService.jwtPrivateKeyPath`. Every other service uses `platform.jwtPublicKeyPath` for the public PEM.
 
 ```bash
 mkdir -p "$HOME/.my-pet-care"
@@ -130,23 +146,17 @@ openssl genpkey -algorithm ED25519 -out "$HOME/.my-pet-care/authentication-priva
 openssl pkey -in "$HOME/.my-pet-care/authentication-private.pem" -pubout -out "$HOME/.my-pet-care/authentication-public.pem"
 ```
 
-`JWT_PUBLIC_KEY` may hold the public PEM text instead of a path. These instructions use the path.
+Create `config/instance.json` from `config/instance.example.json`. Set at least:
 
-Export the variables the processes exit without. `pnpm dev` already sets each service `DATABASE_URL` and `PORT`. When `AUTH_BASE_URL` is set, Owner & Pet Manager sets `AUTH_TOKEN_URL` to `{AUTH_BASE_URL}/oauth/token`.
+- `platform.serviceSecret` and `platform.setupSecret` (generate once per deployment; the same values for every service in that deployment)
+- `platform.jwtPublicKeyPath`
+- `authenticationService.jwtPrivateKeyPath`, `resetLinkTemplate` (exactly one `{token}`), and `databaseUrl`
+- `databaseUrl` on Owner & Pet Manager, Pet Health Service, and Activity Manager (Compose defaults: `postgresql://my_pet_care:my_pet_care@localhost:5432/<database_name>` with database names from [Databases](#databases))
+- Optional `authenticationService.mailSink` as `file:<path>` so reset links append to a file; omit it to fail reset delivery
 
-```bash
-export JWT_PRIVATE_KEY_PATH="$HOME/.my-pet-care/authentication-private.pem"
-export JWT_PUBLIC_KEY_PATH="$HOME/.my-pet-care/authentication-public.pem"
-export PLATFORM_SERVICE_SECRET="$(openssl rand -base64 32)"
-export PLATFORM_SETUP_SECRET="$(openssl rand -base64 32)"
-export RESET_LINK_TEMPLATE='https://example.test/reset?token={token}'
-export OWNER_PET_MANAGER_BASE_URL=http://127.0.0.1:3001
-export AUTH_BASE_URL=http://127.0.0.1:3004
-export COMMUNITY_BASE_URL=http://127.0.0.1:3005
-export MAIL_SINK="file:$HOME/.my-pet-care/reset-links.txt"
-```
+Shared ports and local base URLs live in committed `config/shared.json`. Owner & Pet Manager derives the OAuth token URL from `authBaseUrl` plus `/oauth/token`.
 
-Authentication Service signs Owner and platform access tokens, ensures its own platform client before it listens, and writes each reset link as one line under `MAIL_SINK`. Owner & Pet Manager, Pet Health Service, Activity Manager, and the Community stub call ensure with the same setup secret before they listen. The Community stub registers service id `community`. A client-credentials grant succeeds after that row exists. Leave `MAIL_SINK` unset only when you want reset requests to fail delivery.
+Authentication Service signs Owner and platform access tokens, ensures its own platform client before it listens, and writes each reset link when `mailSink` is set. Owner & Pet Manager, Pet Health Service, Activity Manager, and the Community stub call ensure with the same setup secret before they listen. The Community stub registers service id `community`. A client-credentials grant succeeds after that row exists.
 
 Start Postgres, install dependencies, and start the processes. Ports are listed in [Local stack](#local-stack).
 
