@@ -19,6 +19,7 @@ import {
   isPlatformService,
 } from "./authz.js";
 import type { Actor, UseCaseDeps } from "./ports.js";
+import { mapOwnerUniqueViolation } from "../infrastructure/db-errors.js";
 import { err, ok, type Result } from "./result.js";
 
 export type CreateOwnerInput = {
@@ -53,15 +54,23 @@ export async function createOwner(
   }
 
   const passwordHash = await deps.passwordHasher.hash(input.password);
-  const owner = await deps.store.owners.insert({
-    id: deps.ids.next(),
-    username: input.username,
-    email: input.email,
-    passwordHash,
-    photo: input.photo ?? null,
-  });
+  try {
+    const owner = await deps.store.owners.insert({
+      id: deps.ids.next(),
+      username: input.username,
+      email: input.email,
+      passwordHash,
+      photo: input.photo ?? null,
+    });
 
-  return ok(toOwnerPublic(owner, true));
+    return ok(toOwnerPublic(owner, true));
+  } catch (error) {
+    const mapped = mapOwnerUniqueViolation(error);
+    if (mapped !== null) {
+      return err(mapped);
+    }
+    throw error;
+  }
 }
 
 export async function getOwnerById(
@@ -127,7 +136,7 @@ export async function updateOwner(
     return err(Failures.notFound());
   }
   if (!owner.active) {
-    return err(Failures.conflict("A deactivated Owner cannot be updated."));
+    return err(Failures.ownerDeactivated());
   }
 
   if (input.username !== undefined && !isValidUsername(input.username)) {
@@ -161,12 +170,21 @@ export async function updateOwner(
     passwordHash = await deps.passwordHasher.hash(input.password);
   }
 
-  const updated = await deps.store.owners.update(ownerId, {
-    username: input.username,
-    email: input.email,
-    passwordHash,
-    photo: input.photo,
-  });
+  let updated;
+  try {
+    updated = await deps.store.owners.update(ownerId, {
+      username: input.username,
+      email: input.email,
+      passwordHash,
+      photo: input.photo,
+    });
+  } catch (error) {
+    const mapped = mapOwnerUniqueViolation(error);
+    if (mapped !== null) {
+      return err(mapped);
+    }
+    throw error;
+  }
   if (updated === null) {
     return err(Failures.notFound());
   }
@@ -196,7 +214,7 @@ export async function deactivateOwner(
     return err(Failures.notFound());
   }
   if (!owner.active) {
-    return err(Failures.alreadyDeactivated());
+    return err(Failures.ownerAlreadyDeactivated());
   }
 
   let isCommunityOwner: boolean;
@@ -246,7 +264,7 @@ export async function setPetListVisibility(
     return err(Failures.notFound());
   }
   if (!owner.active) {
-    return err(Failures.conflict("A deactivated Owner cannot be updated."));
+    return err(Failures.ownerDeactivated());
   }
 
   const updated = await deps.store.owners.setPetListVisibility(ownerId, visibility);
@@ -332,7 +350,7 @@ export async function setPasswordFromAuth(
     return err(Failures.notFound());
   }
   if (!owner.active) {
-    return err(Failures.conflict("A deactivated Owner cannot be updated."));
+    return err(Failures.ownerDeactivated());
   }
 
   const passwordHash = await deps.passwordHasher.hash(password);

@@ -102,6 +102,31 @@ describe("createOwner", () => {
     assert.equal("passwordHash" in result.value, false);
   });
 
+  it("maps Postgres unique violations on create to username or email taken", async () => {
+    const deps = createDeps();
+    const base = deps.store.owners;
+    deps.store.owners = {
+      ...base,
+      async insert(owner) {
+        const err = Object.assign(new Error("duplicate key"), {
+          code: "23505",
+          constraint: "owners_email_lower_uidx",
+        });
+        throw err;
+      },
+    };
+    const result = await createOwner(deps, {
+      username: "alice",
+      email: "alice@example.com",
+      password: "unique-passphrase-99",
+    });
+    assert.equal(result.ok, false);
+    if (result.ok) {
+      return;
+    }
+    assert.equal(result.error.code, "email_taken");
+  });
+
   it("rejects duplicate username (case-sensitive) and email (case-insensitive)", async () => {
     const deps = createDeps();
     await createOwner(deps, {
@@ -119,7 +144,7 @@ describe("createOwner", () => {
     if (usernameTaken.ok) {
       return;
     }
-    assert.equal(usernameTaken.error.code, "conflict");
+    assert.equal(usernameTaken.error.code, "username_taken");
 
     const emailTaken = await createOwner(deps, {
       username: "bob",
@@ -130,7 +155,7 @@ describe("createOwner", () => {
     if (emailTaken.ok) {
       return;
     }
-    assert.equal(emailTaken.error.code, "conflict");
+    assert.equal(emailTaken.error.code, "email_taken");
   });
 
   it("rejects common passwords and invalid fields", async () => {
@@ -294,7 +319,7 @@ describe("deactivateOwner cascade", () => {
     );
     assert.equal(blocked.ok, false);
     if (!blocked.ok) {
-      assert.equal(blocked.error.code, "conflict");
+      assert.equal(blocked.error.code, "community_owner");
     }
     assert.equal((await gated.store.owners.findById(communityOwnerId))?.active, true);
   });
@@ -315,7 +340,7 @@ describe("deactivateOwner cascade", () => {
     const again = await deactivateOwner(deps, ownerActor(ownerId), ownerId);
     assert.equal(again.ok, false);
     if (!again.ok) {
-      assert.equal(again.error.code, "conflict");
+      assert.equal(again.error.code, "owner_already_deactivated");
     }
   });
 });

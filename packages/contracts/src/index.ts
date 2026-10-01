@@ -51,6 +51,48 @@ export const conflictProblem = {
   detail: "The request conflicts with the current state of the resource.",
 } as const satisfies ProblemDetails;
 
+export const usernameTakenProblem = {
+  type: "urn:my-pet-care:username-taken",
+  title: "Conflict",
+  status: 409,
+  detail: "Username is already in use.",
+} as const satisfies ProblemDetails;
+
+export const emailTakenProblem = {
+  type: "urn:my-pet-care:email-taken",
+  title: "Conflict",
+  status: 409,
+  detail: "Email is already in use.",
+} as const satisfies ProblemDetails;
+
+export const ownerAlreadyDeactivatedProblem = {
+  type: "urn:my-pet-care:owner-already-deactivated",
+  title: "Conflict",
+  status: 409,
+  detail: "The Owner is already deactivated.",
+} as const satisfies ProblemDetails;
+
+export const ownerDeactivatedProblem = {
+  type: "urn:my-pet-care:owner-deactivated",
+  title: "Conflict",
+  status: 409,
+  detail: "This Owner is deactivated.",
+} as const satisfies ProblemDetails;
+
+export const communityOwnerProblem = {
+  type: "urn:my-pet-care:community-owner",
+  title: "Conflict",
+  status: 409,
+  detail: "This Owner cannot be deactivated while they are a Community owner.",
+} as const satisfies ProblemDetails;
+
+export const petAlreadyDeactivatedProblem = {
+  type: "urn:my-pet-care:pet-already-deactivated",
+  title: "Conflict",
+  status: 409,
+  detail: "The Pet is already deactivated.",
+} as const satisfies ProblemDetails;
+
 export const resourceNotFoundProblem = {
   type: "urn:my-pet-care:resource-not-found",
   title: "Not Found",

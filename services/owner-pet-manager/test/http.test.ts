@@ -183,6 +183,124 @@ describe("HTTP routes", () => {
     await app.close();
   });
 
+  function assertProblemJson(response: { statusCode: number; headers: Record<string, string | string[] | undefined>; json: () => { type: string } }) {
+    const contentType = response.headers["content-type"];
+    assert.equal(contentType, "application/problem+json");
+    assert.ok(response.json().type.startsWith("urn:my-pet-care:"));
+  }
+
+  it("rejects unknown fields on create Owner with 400 problem+json", async () => {
+    const app = await createTestApp();
+    const response = await app.inject({
+      method: "POST",
+      url: "/owners",
+      payload: {
+        username: "alice",
+        email: "alice@example.com",
+        password: "unique-passphrase-99",
+        extra: "nope",
+      },
+    });
+    assert.equal(response.statusCode, 400);
+    assertProblemJson(response);
+    assert.equal(response.json().type, "urn:my-pet-care:validation-failed");
+    await app.close();
+  });
+
+  it("returns 409 username-taken for duplicate username", async () => {
+    const app = await createTestApp();
+    await app.inject({
+      method: "POST",
+      url: "/owners",
+      payload: {
+        username: "alice",
+        email: "alice@example.com",
+        password: "unique-passphrase-99",
+      },
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/owners",
+      payload: {
+        username: "alice",
+        email: "other@example.com",
+        password: "unique-passphrase-99",
+      },
+    });
+    assert.equal(response.statusCode, 409);
+    assertProblemJson(response);
+    assert.equal(response.json().type, "urn:my-pet-care:username-taken");
+    await app.close();
+  });
+
+  it("returns 403 for Owner credentials lookup without Auth service JWT", async () => {
+    const app = await createTestApp();
+    const created = await app.inject({
+      method: "POST",
+      url: "/owners",
+      payload: {
+        username: "alice",
+        email: "alice@example.com",
+        password: "unique-passphrase-99",
+      },
+    });
+    const owner = created.json();
+    const token = await signOwner(owner.id);
+    const response = await app.inject({
+      method: "GET",
+      url: "/owners/credentials?identifier=alice",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    assert.equal(response.statusCode, 403);
+    assertProblemJson(response);
+    assert.equal(response.json().type, "urn:my-pet-care:forbidden");
+    await app.close();
+  });
+
+  it("returns 404 resource-not-found for missing Owner", async () => {
+    const app = await createTestApp();
+    const token = await signOwner("00000000-0000-4000-8000-000000000001");
+    const response = await app.inject({
+      method: "GET",
+      url: "/owners/00000000-0000-4000-8000-000000000099",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    assert.equal(response.statusCode, 404);
+    assertProblemJson(response);
+    assert.equal(response.json().type, "urn:my-pet-care:resource-not-found");
+    await app.close();
+  });
+
+  it("returns 409 owner-already-deactivated on second deactivate", async () => {
+    const app = await createTestApp();
+    const created = await app.inject({
+      method: "POST",
+      url: "/owners",
+      payload: {
+        username: "alice",
+        email: "alice@example.com",
+        password: "unique-passphrase-99",
+      },
+    });
+    const owner = created.json();
+    const token = await signOwner(owner.id);
+    const first = await app.inject({
+      method: "DELETE",
+      url: `/owners/${owner.id}`,
+      headers: { authorization: `Bearer ${token}` },
+    });
+    assert.equal(first.statusCode, 204);
+    const second = await app.inject({
+      method: "DELETE",
+      url: `/owners/${owner.id}`,
+      headers: { authorization: `Bearer ${token}` },
+    });
+    assert.equal(second.statusCode, 409);
+    assertProblemJson(second);
+    assert.equal(second.json().type, "urn:my-pet-care:owner-already-deactivated");
+    await app.close();
+  });
+
   it("allows Auth service credentials lookup", async () => {
     const app = await createTestApp();
     const created = await app.inject({

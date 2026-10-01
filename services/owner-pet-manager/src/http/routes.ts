@@ -58,12 +58,14 @@ async function mapResult<T>(
   return reply.status(successStatus).send(result.value);
 }
 
-const createOwnerBody = z.object({
-  username: z.string().min(1),
-  email: z.string().min(1),
-  password: z.string().min(1),
-  photo: z.string().min(1).optional(),
-});
+const createOwnerBody = z
+  .object({
+    username: z.string().min(1),
+    email: z.string().min(1),
+    password: z.string().min(1),
+    photo: z.string().min(1).optional(),
+  })
+  .strict();
 
 const updateOwnerBody = z
   .object({
@@ -72,26 +74,33 @@ const updateOwnerBody = z
     password: z.string().min(1).optional(),
     photo: z.string().min(1).nullable().optional(),
   })
+  .strict()
   .refine((body) => Object.keys(body).length > 0, {
     message: "At least one field is required.",
   });
 
-const visibilityBody = z.object({
-  petListVisibility: z.enum(["public", "private"]),
-});
+const visibilityBody = z
+  .object({
+    petListVisibility: z.enum(["public", "private"]),
+  })
+  .strict();
 
-const setPasswordBody = z.object({
-  password: z.string().min(1),
-});
+const setPasswordBody = z
+  .object({
+    password: z.string().min(1),
+  })
+  .strict();
 
-const createPetBody = z.object({
-  name: z.string().min(1),
-  species: z.enum(["dog", "cat"]),
-  sex: z.enum(["male", "female", "unknown"]),
-  breed: z.string().min(1).optional(),
-  dateOfBirth: z.string().min(1).optional(),
-  photo: z.string().min(1).optional(),
-});
+const createPetBody = z
+  .object({
+    name: z.string().min(1),
+    species: z.enum(["dog", "cat"]),
+    sex: z.enum(["male", "female", "unknown"]),
+    breed: z.string().min(1).optional(),
+    dateOfBirth: z.string().min(1).optional(),
+    photo: z.string().min(1).optional(),
+  })
+  .strict();
 
 const updatePetBody = z
   .object({
@@ -102,6 +111,7 @@ const updatePetBody = z
     dateOfBirth: z.string().min(1).nullable().optional(),
     photo: z.string().min(1).nullable().optional(),
   })
+  .strict()
   .refine((body) => Object.keys(body).length > 0, {
     message: "At least one field is required.",
   });

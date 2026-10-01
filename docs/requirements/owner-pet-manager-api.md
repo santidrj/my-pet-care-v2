@@ -20,6 +20,27 @@ This document maps **Owner & Pet Manager** functional requirements to resource-o
 | Deactivation (`DELETE`) | `204` empty body |
 | Ownership check | `200` + `{ "isOwner": boolean }` |
 
+## Failure status codes
+
+Details are fixed sentences. They carry no id, path, or upstream message. Types already in `packages/contracts` keep the detail defined there.
+
+| Failure | Status | `type` | Detail |
+| ------- | ------ | ------ | ------ |
+| No route | `404` | `urn:my-pet-care:not-found` | `No route matches this request.` |
+| Missing, invalid, or expired JWT | `401` | `urn:my-pet-care:unauthorized` | `Authentication is required to access this resource.` |
+| Validation (missing or invalid fields, unknown JSON properties on a request body) | `400` | `urn:my-pet-care:validation-failed` | `The request is invalid.` |
+| Caller is not allowed for the operation | `403` | `urn:my-pet-care:forbidden` | `You are not allowed to perform this operation.` |
+| Missing Owner or Pet; Pet summary unavailable; ownership check when either id is missing | `404` | `urn:my-pet-care:resource-not-found` | `The requested resource was not found.` |
+| Username already used (including concurrent create/update races) | `409` | `urn:my-pet-care:username-taken` | `Username is already in use.` |
+| Email already used (including concurrent create/update races) | `409` | `urn:my-pet-care:email-taken` | `Email is already in use.` |
+| Owner Deactivation while already deactivated | `409` | `urn:my-pet-care:owner-already-deactivated` | `The Owner is already deactivated.` |
+| Update or visibility change on a deactivated Owner | `409` | `urn:my-pet-care:owner-deactivated` | `This Owner is deactivated.` |
+| Owner Deactivation while still Community owner | `409` | `urn:my-pet-care:community-owner` | `This Owner cannot be deactivated while they are a Community owner.` |
+| Community-owner check could not be completed | `409` | `urn:my-pet-care:community-check-unavailable` | `Owner deactivation could not be completed.` |
+| Update on a deactivated Pet | `409` | `urn:my-pet-care:pet-deactivated` | `This Pet is deactivated.` |
+| Pet Deactivation while already deactivated | `409` | `urn:my-pet-care:pet-already-deactivated` | `The Pet is already deactivated.` |
+| Unexpected failure | `500` | `urn:my-pet-care:internal-error` | `The service failed to handle this request.` |
+
 ## Endpoints
 
 ### Owners
@@ -70,5 +91,4 @@ Import or open the local Postman project from this repo. Use the **Owner & Pet M
 
 ## Out of scope for this API doc
 
-- Per-failure Problem Details `type` URNs beyond the skeleton not-found / internal-error pair (ADR-0014) — add domain URNs as handlers land.
 - TLS termination and token verification library details.
