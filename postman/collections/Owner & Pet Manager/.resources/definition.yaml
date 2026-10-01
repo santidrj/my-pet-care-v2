@@ -8,7 +8,7 @@ description: |
   OpenAPI: `postman/specs/owner-pet-manager/openapi.yaml`.
 
   `DELETE` on Owner or Pet means Deactivation (soft), not a Hard delete.
-  `POST /owners` is public (ADR-0015); other routes require a Bearer JWT (ADR-0011).
+  `POST /owners` is public (ADR-0015); other routes require a Bearer JWT (ADR-0016).
   Errors are RFC 9457 Problem Details (ADR-0010, ADR-0014).
 variables:
   - key: baseUrl

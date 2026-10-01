@@ -11,3 +11,5 @@ We considered gRPC, tRPC, and GraphQL. gRPC gives a stricter contract and less l
 Request and response shapes live in a shared TypeScript package. Each service validates them at the process boundary, because TypeScript types are erased at runtime (ADR-0003).
 
 **Consequences.** Synchronous cross-service work is an HTTP request and response. A failed call fails the operation that needed it, as ADR-0002 describes. Each service exposes that API with Fastify (ADR-0007). Error bodies are Problem Details (ADR-0010).
+
+**Amendment (2026-10).** Cross-service REST request and response shapes are defined in the committed OpenAPI specs ([ADR-0021](./0021-openapi-specs-are-contract-source-of-truth.md)), not only in a shared TypeScript package.

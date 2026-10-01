@@ -1,7 +1,7 @@
 name: Owner & Pet Manager Local
 values:
 - key: baseUrl
-  value: http://localhost:3001
+  value: http://127.0.0.1:3001
   enabled: true
   description: Owner & Pet Manager base URL (local default port 3001)
 - key: ownerAccessToken

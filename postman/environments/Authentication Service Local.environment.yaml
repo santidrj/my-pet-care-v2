@@ -1,7 +1,7 @@
 name: Authentication Service Local
 values:
   - key: baseUrl
-    value: http://localhost:3004
+    value: http://127.0.0.1:3004
     enabled: true
     description: Authentication Service base URL (local default port 3004)
   - key: platformAccessToken
