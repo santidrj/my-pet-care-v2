@@ -491,23 +491,38 @@ components:
         $ref: '#/components/schemas/Uuid'
   responses:
     BadRequest:
-      description: Validation failed
+      description: Validation failed (including unknown JSON properties on request bodies)
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: urn:my-pet-care:validation-failed
+            title: Bad Request
+            status: 400
+            detail: The request is invalid.
     Unauthorized:
       description: Missing or invalid Bearer JWT
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: urn:my-pet-care:unauthorized
+            title: Unauthorized
+            status: 401
+            detail: Authentication is required to access this resource.
     Forbidden:
       description: Caller is not allowed for this operation
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: urn:my-pet-care:forbidden
+            title: Forbidden
+            status: 403
+            detail: You are not allowed to perform this operation.
     NotFound:
       description: Resource not found (or indistinguishable failure for Pet summary)
       content:
@@ -522,8 +537,107 @@ components:
                 title: Not Found
                 status: 404
                 detail: No route matches this request.
+            resourceNotFound:
+              summary: Missing Owner or Pet
+              value:
+                type: urn:my-pet-care:resource-not-found
+                title: Not Found
+                status: 404
+                detail: The requested resource was not found.
+    UsernameTaken:
+      description: Username already in use (including concurrent create/update races)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: urn:my-pet-care:username-taken
+            title: Conflict
+            status: 409
+            detail: Username is already in use.
+    EmailTaken:
+      description: Email already in use (including concurrent create/update races)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: urn:my-pet-care:email-taken
+            title: Conflict
+            status: 409
+            detail: Email is already in use.
+    OwnerAlreadyDeactivated:
+      description: Owner Deactivation while already deactivated
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: urn:my-pet-care:owner-already-deactivated
+            title: Conflict
+            status: 409
+            detail: The Owner is already deactivated.
+    OwnerDeactivated:
+      description: Update or visibility change on a deactivated Owner
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: urn:my-pet-care:owner-deactivated
+            title: Conflict
+            status: 409
+            detail: This Owner is deactivated.
+    CommunityOwner:
+      description: Owner Deactivation while still Community owner
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: urn:my-pet-care:community-owner
+            title: Conflict
+            status: 409
+            detail: This Owner cannot be deactivated while they are a Community owner.
+    CommunityCheckUnavailable:
+      description: Community-owner check could not be completed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: urn:my-pet-care:community-check-unavailable
+            title: Conflict
+            status: 409
+            detail: Owner deactivation could not be completed.
+    PetDeactivated:
+      description: Update on a deactivated Pet
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: urn:my-pet-care:pet-deactivated
+            title: Conflict
+            status: 409
+            detail: This Pet is deactivated.
+    PetAlreadyDeactivated:
+      description: Pet Deactivation while already deactivated
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: urn:my-pet-care:pet-already-deactivated
+            title: Conflict
+            status: 409
+            detail: The Pet is already deactivated.
     Conflict:
-      description: Conflict (duplicate username/email, already deactivated, Community-owner gate)
+      description: |
+        Domain conflicts use distinct Problem Details types (ADR-0014). See
+        UsernameTaken, EmailTaken, OwnerAlreadyDeactivated, OwnerDeactivated,
+        CommunityOwner, CommunityCheckUnavailable, PetDeactivated, and
+        PetAlreadyDeactivated for the bodies this service emits.
       content:
         application/json:
           schema:

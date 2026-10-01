@@ -136,7 +136,7 @@ export async function updatePet(
     return err(Failures.forbidden());
   }
   if (!pet.active) {
-    return err(Failures.conflict("A deactivated Pet cannot be updated."));
+    return err(Failures.petDeactivated());
   }
 
   if (input.name !== undefined && input.name.length === 0) {
@@ -188,7 +188,7 @@ export async function deactivatePet(
     return err(Failures.forbidden());
   }
   if (!pet.active) {
-    return err(Failures.alreadyDeactivated());
+    return err(Failures.petAlreadyDeactivated());
   }
 
   await deps.store.pets.deactivate(petId);
